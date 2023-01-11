@@ -1,0 +1,18 @@
+CFLAGS = -O3 -Wall -Werror -std=gnu99
+CC = arm-none-eabi-gcc
+DIS = arm-none-eabi-objdump
+
+SRC = $(wildcard *.c)
+OBJ = $(src:.c=.o)
+#PROGS = 2-wait.o wait-not-full.o  0-timer.o 1-timer.o 1-timer-fix.o 2-wait.o 3-fb.o 4-fb.o 1-timer-fix.real.o 5-barrier.o
+
+
+all : $(OBJ)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+	$(DIS) -d $@ > $@.dis
+
+.PHONY: clean
+clean:
+	rm -f $(obj) all *.dis *~ *.s
