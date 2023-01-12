@@ -1,9 +1,19 @@
-// 2023: interesting!  The new version of gcc 
-// (10.3.1 20210824) no longer breaks this code.   
-// However: if you reorder the cp struct field 
-// assignments, it will break (see 5-fb.c).  
-// I'm guessing is an interaction b/n register
-// assignment and peephole optimization.
+### Bug
+
+We have been claiming that device bugs are intimittent and an interesting
+example showed up when doing the lecture in the first class.
+
+We had the following simplified code that tries to initialize the
+r/pi framebuffer by:
+
+  1. Filling in a message structe `cp`.
+  2. After (1) completes: send the message by setting assigning its
+     address to the mailbox `write` field.
+     
+We had the code:
+
+```cpp
+
 typedef struct {
   unsigned read;
   unsigned padding[3];
@@ -44,18 +54,5 @@ void write_mailbox_x(mailbox_t *mbox, unsigned channel) {
     mbox->write = ((unsigned)(&cp) | channel | 0x40000000);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
