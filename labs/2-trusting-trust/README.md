@@ -6,7 +6,7 @@ the favorite of the quarter.
 Before lab:
   - Make sure you read the [PRELAB](./PRELAB.md)
   - Read the paper for today: [trusting-trust.pdf](./trusting-trust.pdf)
-    carefully (I'd say at least three times).
+    carefully (I'd say at least three times).  To check your understanding
   - Make sure you can answer the reading questions [READING-Q](./READING-Q.md).
   - Look through the code in `code/step1`, `code/step2` and `code/step3`:
     you will be implementing the missing pieces.
@@ -23,8 +23,17 @@ We will write the code for his hack.  While the paper is short, and the
 hack seems not that hard, when you actually have to write out the code,
 you'll likely realize you don't actually know the next thing to type.
 
-Is a neat example of how circular, recursive definitions work when
-you have a compiler that can compile itself.  
+The hack is a neat example of how circular, recursive definitions
+work when you have a compiler that can compile itself.    For example,
+a C compiler written in C implements `while` loops,
+`for` loops and `if` statements *using code written with `while` loops,
+`for` loops and `if` statements*.  Seems impossible.  Didn't Godel say
+something about it?    After the lab you'll have a bit firmer grip
+on this slippery weirdness.   (If you like this kind of magic trick,
+read about about "self-hosting" or 
+[bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(compilers))
+compilers.)
+
 
 Everyone I've met above a certain age in systems has read this paper
 and they all seem to think they understand it.  However, I've not met
@@ -46,19 +55,31 @@ steps: start with `code/step1` (easy), then `code/step2` (medium),
 then `code/step3` (hardest).
 
 Standard check-off:
-   - When you type `make` in `code/step3` the test passes.
-   - Extension: redo all the steps in a different programming language.
+  - When you type `make check` in `code/step3` the test passes.
 
-Hard check-off:
+    NOTE: the most common mistake on this lab: making code much more
+    complicated by implementing the attacks by buffering and manipulating
+    temporary `char` arrays rather than emiting the code immediately to
+    the file using `fprintf`.  Quick test: your code shouldn't be using
+    `strcpy` or `strcat` --- not needed and creates bugs.
+
+Hard check-off (if you're exceptionally ambitious):
 
   - Do not use our code at all but write everything on your own
-    from the paper.  This will maximize difficulty, but also understanding
-    Just make sure it passes our `make check` in `step3`.
+    based entirely on the paper.  This will maximize difficulty, but also
+    understanding. Just make sure you name your programs
+    so that they pass our `make check` in `step3`.
 
-    NOTE: in general for any lab you can always ignore
-    our code and just implement your own from scratch as long
-    as the provided tests pass.
+    NOTE: in general for any lab you can always ignore our code and just
+    implement your own from scratch as long as the provided tests pass.
+    This will count as an extension (either major or minor depending on
+    the lab).
 
+Extensions:
+  - Redo everything in a different language (e.g., rust).
+  - Inject attacks into a binary program rather than source code.
+  - Attack a different program (this could be a minor or major extension
+    depending.)
 
 -------------------------------------------------------------------
 ### Intuition: self-replicating attack injection
@@ -77,10 +98,10 @@ What is interesting about his hack:
 
     The attack lived only in the shipped compiler binary, which detected
     when it was compiling the clean, non-hacked compiler source code
-    and automatically inject the attack code into the produced binary.
-    This flawed binary was then able to inject attacks both into 
-    login and into the original compiler source.
-    
+    and automatically injected a self-replicating copy of the attack
+    code into the produced binary.  This flawed binary was then able to
+    inject attacks both into login and into the original compiler source.
+
     Devious and not straightfordward.
 
 Words make this awkward.  To make it concrete, assume
@@ -94,7 +115,7 @@ we have three single-file programs:
 
   - `login.c`: the clean unhacked login program.   When run
     it prompts for a user name.  If the user does not exist
-    it exits.  For example:
+    it whines and exits.  For example:
 
             % compiler login.c -o login
             % login
@@ -133,11 +154,12 @@ we have three single-file programs:
 
     In other words, during compilation the `trojan-compiler` binary
     essentially turns `compiler.c` into `trojan-compiler.c` and generates
-    a binary from it. This new `compile` binary will now inject attacks
+    a binary from it. This new hacked `compile` binary will now inject attacks
     both into `login.c` and `compiler.c` just as `trojan-compiler` does.
-    Further, the `compiler` binary also self-replicates the attack
-    when used to compile itself *even though the attack is not in
-    `compiler.c`*!  (Think about this.)
+    Further, the hacked `compiler` binary also self-replicates the
+    attack when used to compile itself *even though the attack is not in
+    `compiler.c`*!  (Think about this weirdness: it's as close to a koan
+    as I know in systems.)
 
     To take this a step further, we can even delete everything to do
     with the hack and recompile `compiler.c` with its flawed binary over
@@ -177,7 +199,7 @@ based on Figure 1 in Thompson's paper.
 
 You are given:
 
-  - `seed.c`: the main part of the C code in the paper (so
+  - `code/step1/seed.c`: the main part of the C code in the paper (so
      you don't have to type it in).
 
    - the `check` recipe in the `Makefile` for making and checking
@@ -192,14 +214,11 @@ Finish implementing `code/step1/quine-gen.c` which when fed
 (1) a character array describing the input `seed.c` and (2) the input
 itself.  This will be the code as shown at the beginning of Figure 1.
 
-  - We give you `code/step1/seed.c`: the main part of the C code in
-    the paper (so you don't have to type it in).
-
   - After you implement `quine-gen.c` and then run it:
 
             % ./quine-gen < seed.c 
 
-    You should get something that looks like:
+    You should get something that looks something like:
 
             char prog[] = {
 	            47, 	47, 	32, 	99, 	97, 	110, 	
@@ -239,6 +258,19 @@ itself.  This will be the code as shown at the beginning of Figure 1.
     As mentioned above, to make this easier, we've added a target `check`
     in the `step1/Makefile`: you can check using `make check`.
 
+
+Notes:
+  1. We probably should have picked a better name for `quine-gen` --- it
+     doesn't really generate a quine from arbitary input but instead merely
+     converts its input to an array and then emits the array and the input.
+     This naming caused some confusion when people did step 3.
+
+  2. If you get syntax errors in the quine file you generate it --- just
+     open up the file in your editor and see what you would need to fix
+     these errors and then put those fixes in `quine-gen.c`.  Just because
+     you automatically emitted the code rather than typed it, the rules
+     are the same: treat the code as if you wrote it.
+
 --------------------------------------------------------------------------
 #### step2: inject attacks into `step2/login` and `step2/compiler`
 
@@ -260,6 +292,7 @@ We give you:
     insert attacks.
 
 What you should do:
+
   0. Before modifying anything make sure the code works.
      When you run `make` you should see something like:
 
@@ -291,18 +324,18 @@ What you should do:
             username: ken
             successful login: <ken>
 
-  2. Add a second modification to the `compile()` routine in
+  2. Finally, also modify the `compile()` routine in
     `trojan-compiler.c` so that it scans its input for the `compile()`
     routine in `compiler.c` and, if it finds it, injects a simple print
     statement that will print each time `compile()` runs --- this is
     obviously not a useful "attack", but rather rather serves as a
     placeholder for the final, subtle step in part 3.
 
-##### Details of attacking `login`
+##### More details about attacking `login`
 
-Here you'll inject an trivial attack in the `login` program that will
-make the `login()` routine return true for user `ken` without asking
-for a password.
+As stated, you'll first inject an trivial attack in the `login` program
+that will make the `login()` routine return true for user `ken` without
+asking for a password.
 
 The basic approach: 
 
@@ -315,17 +348,17 @@ The basic approach:
 
    2. When you type `ken` as a user, `login` should give you success:
 
-        % ./trojan-compiler login.c -o login-attacked
-        % ./login-attacked 
-        user: ken
-        successful login: <ken>
+            % ./trojan-compiler login.c -o login-attacked
+            % ./login-attacked 
+            user: ken
+            successful login: <ken>
 
       And, of course, the one other user should still work:
 
-        % ./login-attacked
-        user: guest
-        passwd: password
-        successful login: <guest>
+            % ./login-attacked
+            user: guest
+            passwd: password
+            successful login: <guest>
 
 ##### Details of attacking `compiler`
 
@@ -369,7 +402,6 @@ prints an annoying message rather than doing something evil.  But what
 exactly does it have to do?   Our problem is that we need the attack to
 be self-replicating.
 
-
 So, for Ken, if anyone ever re-compiled the system C compiler and
 replaced his binary of it that contains his attack, the attack is gone.
 For example using our toys to see the tragedy:
@@ -403,7 +435,14 @@ For example using our toys to see the tragedy:
 
 The fancy step (next) is to use the trick from `code/step1` to fix
 this problem by injecting a self-replicating copy of the attack into
-`compiler.c` while compiling it.
+`compiler.c` while compiling it.  
+
+This may or may not help, but:
+
+  - In a sense you can see step 2 as implementing an `attack.c`
+    that is roughly the source code difference between `compiler.c`
+    and `trojan-compiler.c`, and this step (3) turns the attack into
+    `attack-quine.c`
 
 I'll give some hints below, but you're more than welcome to do this
 on your own!  Just make sure you that you make a copy of your trojan
@@ -436,10 +475,11 @@ compiler is the same:
     
     # success!
 
+
 ### Hints
 
 The basic idea is to take your attack and create a self-replicating version
-using the code in `step1`.  Basic idea:
+using the code in `step1`:
   1. You'll have to generate an array of ASCII values of your attack code
      as in `step1`.
   2. You'll have to modify your attack on the compiler to inject both this
@@ -453,10 +493,21 @@ it, I used an include to pull in the generated sort-of quine code:
   1. Seperate out your attack into its own file (e.g., `attack.c`).
   2. Use `step1/gen-quine` to produce a file `attack.c` that has
      the array and the source code for the attack.
-  3. Include the file into `trojan-compile2.c`.
+  3. Include the file into `trojan-compile2.c`: note, this `#include`
+     will be in the middle of your `compile` routine, not at the 
+     top of the file (where it wouldn't do anything).
   4. Profit.
 
-A few more details to get started are in `step3/README.md`
+Note:
+  - One thing you should *not* do is read in some code at runtime (other
+    than the input) and use that as part of the attack.  We want to 
+    be able to copy the infected `compile` to another machine and 
+    have it able to start replicating the attack rather than immediately
+    break because it depended on some file on the original machine.
+
+    If the `diff` check in the makefile fails, it could be because you
+    did this mistake.  (It could also just be failing because there is
+    non-determinism in compilation on MacOS M1's laptops.)
 	
 -----------------------------------------------------------------------
 #### Postscript
@@ -465,3 +516,5 @@ You have now replicated Thompon's hack.  Startlingly, there seem to be
 only a few people that have ever done so, and most that believe they
 understand the paper woulnd't actually be able to write out the code.
 You can probably really stand out at parties by explaining what you did.
+
+***Lab food paid for by: Michelle J!***
