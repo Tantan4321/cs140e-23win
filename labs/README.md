@@ -23,8 +23,9 @@ re-reading some number of labs later after the concepts have sat for a
 bit so you get a deeper view.  Note summary (so far):
 
   - [COMPILATION](1-compile/volatile/README.md)
+  - [MAKE](1-compile/makefiles/README.md)    ***NEW***
   - [GPIO](3-gpio/GPIO.md)
-  - [DEVICES](3-gpio/DEVICES.md)
+  - [DEVICES](3-gpio/DEVICES.md)  ***NEW***
 
 ---------------------------------------------------------------------
 ### Part 0: non-pi hacking
@@ -42,15 +43,20 @@ a hardware investment.
     compiler can do this translation.  What we cover will apply to every
     lab this quarter.
 
-    ***READING***: our note on [COMPILATION](1-compile/volatile/README.md)
-    which describes how compilers exploit observability to optimize code
-    and how that can break your device code.
+    ***READING***: 
+      - [COMPILATION](1-compile/volatile/README.md)
+        which describes how compilers exploit observability to optimize
+        code and how that can break your device code.  
+      - [MAKE](1-compile/makefiles/README.md) which gives some useful
+        Makefile examples.
 
   - [2-trusting-trust](2-trusting-trust): Ken Thompson is arguably our patron
     saint of operating systems --- brilliant, with a gift for simple code that
     did powerful things.   We will reimplement a simplified version of a crazy
     hack he described in his Turing award lecture that let him log into any
     Unix system in a way hidden even from careful code inspection.
+
+    ***READING***: `2-trusting-trust/trusting-trust.pdf`.
 
 ---------------------------------------------------------------------
 ### Part 1: Going down to metal.
@@ -74,7 +80,7 @@ the pi and Unix side will be written by you:
     [DEVICES](3-gpio/DEVICES.md) as well as pages 4--7 and 91---96 
     of the broadcom datasheet (`docs/BCM2835-ARM-Peripherals.annot.PDF`)
 
-  - ***cross-check***: you will use read-write logging
+  - [4-cross-check]: you will use read-write logging
     of all loads and stores to device memory to verify that your GPIO
     code is equivalent to everyone else's.  If one person got the code
     right, everyone will have it right.

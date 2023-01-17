@@ -3,50 +3,61 @@
 ***NOTE: still editing: send any feedback***
 
 This note gives a give a crash course in thinking about devices and
-their datasheets.  It's both incomplete and yet somewhat repetitive 
-with both itself and the GPIO writeup.  But 
-hopeflly much better than nothing. 
+their datasheets.  It's both incomplete and yet somewhat repetitive with
+both itself and the [GPIO](./GPIO.md) writeup.  But hopefully better
+than nothing.
+
+Table of Contents:
+- [Crash course: Devices](#crash-course)
+  - [What is a device driver](#device-driver-whats-that)
+  - [The first rule of devices: errata](#errata-everything-is-broken)
+  - [Expectations and heuristics for datasheets](#expectations-and-heuristics-for-datasheets)
+  - [Device access = remote procedure calls](#device-accesses--remote-procedure-calls)
+  - [Device configuration is not instantaneous](#device-configuration-is-not-instantaneous)
+  - [Interrupts versus polling for device events](#interrupts-versus-polling-for-device-events).
+  - [Device memory + compiler optimization = bugs](#device-memory--compiler-optimization--bugs)
+  - [Some concrete rules for writing device code](#some-concrete-rules-for-writing-device-code)
 
 ------------------------------------------------------------
-###  Device driver: What's that.
+### Device driver: What's that.
 
 Each hardware device an operating system supports requires a "device
 driver" that can configure and use the device.  Since there are thousands
 of devices, there are thousands of drivers.  Because of device numbers
 and device complexity, about 90% of Linux or BSD is device drivers.
 
-If you have a few minutes you can verify these claims yourself: download
-a Linux kernel tar-ball, unpack it, and look in the `drivers/` directory
---- you'll see thousands of subdirectories containing many millions of
-lines of code.
+ - If you have a few minutes you can verify these claims yourself:
+   download a Linux kernel tar-ball, unpack it, and look in the `drivers/`
+   directory --- you'll see thousands of subdirectories containing many
+   millions of lines of code.
 
-However, weirdly, no one talks about driver code much other than 
-to sneer at its high number of bugs or low elegance.  While you
-can find tens of thousands of resarch papers and hundreds of book chapters
-on "core" operating system topics such as virtual memory, processes or
-file systems, comparatively little gets written about devices despite
-them making up the monster proportion of the code.
+However, weirdly, not much gets written about driver code other than to
+sneer at its high number of bugs or low elegance.  While you can find
+tens of thousands of research papers and hundreds of book chapters on
+"core" operating system topics such as virtual memory, processes or file
+systems, comparatively little gets written about devices despite them
+making up the monster proportion of the code.
 
 Partly this is because devices are necessarily ad hoc.  Among other
 things, this makes it hard to distill them down to general principles.
 Partly it is because the status of hacking on the core kernel is higher;
 drivers are where you pawn off a newbie.
 
-In any case, for this class: much of the action is in devices.  A big win
+In any case, for this class: alot of the action is in devices.  A big win
 of writing a small system from scratch on a hardware platform like the
 r/pi is that we can easily connect devices and do things with them that
-a general-purpose system such as your laptop can't.  Especially true if
-the device has tight real time requirements.  For examlif e, Try to plug
-in an accelerometer to your laptop, or get consisent small nanosecond
+a general-purpose system such as your laptop can't.  Especially true
+if the device has tight real time requirements.  For example: Try to
+plug accelerometer into your laptop, or get consistent small nanosecond
 accurate timings on MacOS (hahaha, sorry, that's mean), or build any of
 the wearable devices you might buy, etc.
 
-By the end class hopefully you will have the superpower that if you
+Hopefully by the By the end class you'll have the superpower that if you
 see some cool new device, you can quickly grab its datasheet, code up a
 driver for it without panic or much fuss, and then be able to exploit
 whatever interesting power it gives.  This ability will also make it
 easy for you to have an interesting idea and then back solve for how to
-build it by looking at the the massive catelogue of devices out there,
+build it by looking at the the massive catalogue of devices out there,
 secure in the knowledge that you can write any code you need.
 
 Partly you'll develop this superpower because after you get through about
@@ -58,23 +69,48 @@ and get used to; this note will talk about some of them.
 So, let me tell you about devices.
 
 --------------------------------------------------------------------
-### Some hacks for reading datasheets
+#### Errata: Everything is broken
+
+The first rule of software is that everything is broken.  Since hardware
+is just software run through a fab, it has the same rule, too.
+
+Check for datasheet errata! Datasheets often have errors.  The Broadcom
+document is no different. Fortunately it has been worked over enough that
+it has a [nice errata](https://elinux.org/BCM2835_datasheet_errata).
+Sometimes you can figure out bugs from contradictions, sometimes
+from errata. One perhaps surprisingly good source is looking at the
+Linux kernel code, since Linux devs often have back-channel access
+to manufacturers, who are highly incentivized to have Linux work with
+their devices.
+
+With that said, if the device doesn't work, the problem is almost
+certainly in your code or your understanding.  Did you hook up to the
+right power?  Did you off-by-one miscount a pin or use a loose jumper?
+Did you mistype an address?  A register name?  Not wait for initialization
+to complete?  Write a bunch of code all-at-once and expect it to work?
+For some reason, many people immediately blame hardware.  Hardware does
+go bad.  But it's a good chance the bug is in your code, just like all
+the preceding yesterdays,
+
+
+--------------------------------------------------------------------
+### Expectations and heuristics for datasheets
 
 If expectation management makes happiness, then the key to getting
 through datasheets is a clear-eyed view of the ways they often suck,
 just expecting it, and doing enough that their surprises become routine
 and you can flow through without a lot of drama.
 
-The following comments also partially apply to architecture manauals,
-though these often  get vetted much more heavily.
+The following comments also generally apply to architecture manuals,
+though these often get vetted much more heavily.
 
 Some crude patterns for datasheets:
 
   - To start off on a positive note: typically 15-20% (or more)
-    of a datasheet can be skipped because it deals with packing
+    of a datasheet can be skipped because it deals with packaging
     dimensions, or spends a bunch of time defining a common device
     protocol (e.g., SPI or I2C).  It's a happy feeling to flip past
-    it all.
+    these pages; enjoy.
 
   - When you read a datasheet you mainly want to know "how":  how to
     configure a device to do what you want, how to know when data is
@@ -87,9 +123,9 @@ Some crude patterns for datasheets:
     sentences for configuration and use.
 
     The most extreme example of non-operational, definitions-only prose
-    I recall is the I2C device protocol "chapter" in the RISC-V  HiFive1
-    manual: which simply gave a table of device addreses with the sentence
-    that you should go "read the the I2C spec".
+    I recall is the I2C device protocol "chapter" in the HiFive1 RISC-V
+    manual: they simply give a table of device addresses with the sentence
+    that you should go "read the the I2C spec."
 
   - Related: fields are generally defined linearly --- e.g., in order
     of their memory address --- rather than grouped operationally.
@@ -119,30 +155,31 @@ Some crude patterns for datasheets:
 
     In any case: known problem.  It's just the way it is.   One of
     your skills will be to get used to taking a bunch of "what" prose,
-    and turning it into a working "how".  Part of this will be inferring
-    implicit rules for how to combine or sequence multiple device 
-    actions.  Do you have to write A before B?  Do you have to clear
-    X before configuring the device?
+    and transmuting it into a working "how".  Part of this will be
+    inferring implicit rules for how to combine or sequence multiple
+    device actions.  Do you have to write A before B?  Do you have to
+    clear X before configuring the device?
 
     On the plus side, a bad datasheet is a moat keeping your competition
     out and (hopefully) this class makes you able to swim, fast.
 
   - To contradict the previous points: some of the better manufacturers
-    will put out examples and suggestions.  But, note: these are often
-    in something called an "Application Note" rather than the datasheet
-    itself.  
+    will put out examples and suggestions.  However, these are often
+    in something often called an "Application Note" rather than the
+    datasheet itself.
 
     Mechanical suggestion: if you have a device X, search "application
     note X".  Likely useful.
 
   - Datasheets and hardware manuals often have crucial restrictions
-    or important rules buried in the middle of a chapter, in the middle
-    of a bunch of other prose.  You have to expect this dynamic and get
-    in the habit of reading everything very carefully.
+    or important rules buried in the middle of a chapter, in the middle of
+    a bunch of other prose.  You have to expect this plot device and get
+    in the habit of reading everything carefully.  If you device doesn't
+    work: there are worse algorithms than carefully re-reading everything.
 
-    A good example is from our "debug hardware" lab where we use
-    the machine's single stepping execution method to validate code
-    correctness.
+    A good example of such a "buried lede" is from our upcoming "debug
+    hardware" lab where we use the machine's single stepping execution
+    method to validate code correctness.
 
     If you look at the bottom of page 13-16 in the ARM1176 architecture
     manual (the middle of the debug hardware configuration chapter),
@@ -152,7 +189,7 @@ Some crude patterns for datasheets:
           privileged mode ... it is ignored"
 
     I.e., if you try to single-step in privileged mode rather than
-    user-mode, nothing happens.  The preceeding chapter 13 pages have
+    user-mode, nothing happens.  The preceding chapter 13 pages have
     a bunch of prose on configuring the debug hardware --- nowhere do
     they imply processor state matters.  It's very easy to miss this
     unflagged sentence and try to do single stepping of kernel code,
@@ -162,137 +199,35 @@ Some crude patterns for datasheets:
     Again, major restriction buried in prose with no fore-shadowing.
 
   - More for architecture manuals:  just because something is in there
-    and your CPU chip claims that it implementats that version, it does
-    not mean you have that functionaliy!
+    and your CPU chip claims that it implements that version, it does
+    not mean you have that functionally!
 
-    One example from this class: if you read the arm1176 manual it has
-    an interesting set of performance counters where you can set them
-    to count down from a given number and give you an exception if they
-    hit zero. So, for example, you could use them to run user code for
-    at most 50 cycles.  However, it turns out that while the r/pi A+
-    and pi zero provide working counters, neither has this exception
-    connected --- if a counter hits 0, nothing happens.  Not mentioned
-    in the document; we had to find it discussed in some forum posts.
+    An imperfect safety net for chips: scan the manual for architecture
+    feature registers that you can read to get the list of features the
+    specific implementation provides.  They may be able to drop large
+    features you didn't realize were optional.
 
-    Second example: there is a whole chapter in the arm1176 on how
-    to put code and data in "fast memory" (sort of like pinning in a
-    cache) but, again, the arm1176 chip used for the A+ and zero 
-    silently does not provide this.  Making matters worse,
-    when you "initialize" the functionality the configuration 
-    registers do change, and kind-of look right.
+    One example from this class: if you read the arm1176 manual it has a
+    bunch of different performance counters.  An interesting trick these
+    counters give you is that you can set them to an arbitrary small
+    constant, they will count down on each event (cache miss, cycle)
+    and when the counter reaches zero, throw an exception.  However,
+    even though the manual specifies how to do this and configuration
+    appears to work and both the r/pi A+ and pi zero provide working
+    counters, neither has this exception connected --- if a counter hits
+    0, nothing happens.  Not mentioned in the document; we had to find
+    it discussed in some forum posts.
 
-    I wasted a couple of days on this for the first 240lx offering.
-    The only place I found any comment was an old forum post.  (But
-    in this case, it's possible I missed something in the manual ---
-    but that is a lesson too!)
-
-
-----------------------------------------------------------------
-#### Bigger picture: controlling devices
-
-Generally, whenever you need to control a device, you'll do something
-like the following:
-
-0. Get the datasheet for the device (i.e., the oft poorly-written PDF that describes it).
-1. Figure out which memory locations control which device actions.
-2. Figure out what magic values have to be written to cause the device to do something.
-3. Figure out when you read from them how to interpret the results.
-
-Fairly common patterns:
-
-1. Devices typically require some kind of initialization, so often
-   the first thing you'll do is turn the device on and then do a
-   sequence of writes to set the device in a specific configuration.
-   In some cases, rather than turning it on, you'll disable it so it
-   doesn't interact with the outside world while being setup.
-
-   The tables in the Broadcom give the initial value the device memory
-   will have when powered on (the "reset" column).
-
-   This part of the process is often the most complicated, with several
-   steps: its made worse because getting any step wrong leads to the
-   same result: the device doesn't work.
-
-2. When you're waiting for results there will often be some kind of
-   status or "ready" bit you have to check to see that there is data.
-   Similarly, before you write data (e.g., to send a character using
-   the UART) you will often have to wait for the device to have space.
-
-3. Similarly, for results there is often a way to setup interrupts (we
-   will do this in week 3) so that a piece of code runs rather than
-   requiring you to spin checking if there is data (or space).
-
-4. When you set values, you have to determine if you must preserve
-   old values or can ignore them.
-
---------------------------------------------------------------------
-### Initialization patterns
-
-Some common device configuration details for complex devices:
-
-   - As mentioned above, device enable can be extrmely expensive and
-     just because your final store instruction to set the device's
-     enable field was "completed" from the point of view of the CPU,
-     which has started running the intructions after: ***this does not
-     mean the device is up and running!***
-
-     A complex devices (gyroscope, accelerometer, network transciever)
-     is not going to be instantaneously active.  It's not uncommon for
-     such devices to need 10 or more milliseconds (on the pi: million
-     of cycles).  As a result, you'll want to do a close read looking
-     for any table in the datasheet that says how long to wait.
-
-     While datasheets generally have this information the table may
-     be buried deep in the center of the PDF or the wording kind of
-     weird.  In any case, for any complex device, it's not going to be
-     instantaneously active: you'll want to do a close read looking for
-     any table in the datasheet that says how long to wait.  Like device
-     examples I'd say this should be collected on the first few pages.
-
-     Similarly, if you're looking at device code and you don't some kind
-     of delay after initialization, the code is likely broken.  If you
-     do see a delay, but it doesn't have a specific comment or datasheet
-     page number, I'd say it's also likely broken.  E.g., people flying
-     blind may just stick in a 30ms delay or so "just in case".
-
-   - For devices that have multi-step configurations, usually you will
-     set the device to an "on" but disabled state when you (re-)configure
-     it.  Otherise, it may start sending garbage out the world when you
-     are halfway done with configuration.
-
-   - This is arguable, but keep in mind: While devices have values
-     they should be reset to on restart, it's usually better not to
-     assume them --- either check that's the actual value, or set it
-     explicitly (so, for example, configure can be done twice with
-     different values).  
-
-     If there are FIFO queues you almost certainly want to clear them so
-     that after a re-config you don't send or receive garbage.  An easy
-     race condition: enable the device and then clear the FIFOs --- a
-     messaage from a previous session could arrive.  You want to clear
-     with the device disabled.
-
-We discuss a few of the more tricky issues below.  These apply
-both to GPIO and to devices more generally.
-
-----------------------------------------------------------------
-#### Errata: Everything is broken
-
-Check for datasheet errata! Datasheets often have errors.  The Broadcom
-document is no different. Fortunately it has been worked over enough that
-it has a [nice errata](https://elinux.org/BCM2835_datasheet_errata).
-Sometimes you can figure out bugs from contradictions, sometimes
-from errata. One perhaps surprisingly good source is looking at the
-Linux kernel code, since Linux devs often have back-channel access
-to manufacturers, who are highly incentivized to have Linux work with
-their devices.
-
-The hardest task is to be the first one to boot up a system or configure
-a device.  Any datasheet mistake can easily prevent all progress.
-Isolating the root cause using differential analysis is hard because
-a datasheet error in any of the multiple setup steps  causes the same
-effect: the device doesn't work.  Multiply the above by: are you sure
-both your code and your understanding of the datasheet is correct?
+    Second example: there is a whole chapter in the arm1176 on how to put
+    code and data in "fast memory" (sort of like pinning in a cache).
+    But, as with counter exceptions, the arm1176 chip used for the A+
+    and zero silently does not provide this feature.  Making matters
+    worse, when you "initialize" the functionality the configuration
+    registers do change, and kind-of look right so when things don't
+    work you think you misunderstood the manual.  I wasted a couple of
+    days on this for the first 240lx offering.  The only place I found
+    any comment was an old forum post.  (But in this case, it's possible
+    I missed something in the manual --- but that is a lesson too!)
 
 ----------------------------------------------------------------
 #### Device accesses = remote procedure calls.
@@ -317,20 +252,108 @@ complex remote procedure calls where:
     for a result, this store-load pair can take an arbitrary long
     time to complete.
 
+##### Device memory ordering problems.
+
+One consequence of the fact that device memory accesses are fake is
+that when you are doing loads and stores to multiple Broadcom devices,
+you can get weird ordering bugs.
+
+   - Again, as discussed above, both loads and stores to device memory
+     can take much longer than true memory accesses, since they are closer
+     to arbitrarily complex procedure calls rather than memory accesses.
+
+   - In addition, while your CPU has machinery to enforce an order on true
+     memory accesses (this order is called a "memory consistency model"),
+     device accesses may happen partially or entirely outside of its
+     control.
+
+For the Broadcom devices on our r/pi system:
+
+  1. Reading or writing  to a single device works as you would naively
+     expect it to --- the Broadcom chip (which controls all devices)
+     forces loads and stores to the device to complete in the order they
+     were issued ("sequential consistency") irrespective of their cost.
+
+  2. However, the Broadcom chip does not enforce an order for
+     memory operations *between multiple devices*.
+
+  3. The official Broadcom datasheet rule: after accessing one device
+     (via a load or store), you must manually insert a *hardware memory
+     barrier instruction* before you can access a different device.
+
+     A hardware memory barrier (over-simplifying) guarantees all previous
+     loads and stores have completed before execution goes beyond the
+     barrier and no memory operations below the barrier can propagate
+     above it (e.g., from out-of-order execution).
+
+     But, to repeat: a sequence of accesses to the same device do not
+     need memory barriers.
+
+One easy one to understand ordering bug: if you have to enable device
+A before you can turn on device B, then just because your final store
+instruction to set A's "enable" field was "completed" from the point
+of view of the CPU, which has started running the instructions after:
+***this does not mean device A is up and running!***  This issue comes up
+in the UART lab, where the Broadcom document states you have to enable the
+AUX device before turning on UART.  
+
+Note: even when two devices do not have this type of sequencing rule the
+Broadcom document states that any set of reads and writes to different
+devices must be separated by memory barriers.  It appears (not sure)
+that this is partly due to the memory values not being tagged by their
+associated address, and so if they take different times, the values
+can get reordered but the CPU cannot tell.  Thus, for this class: we
+require you use a memory barrier (`dev_barrier()`) before and possibly
+after accessing a device.
+
+Note:
+
+  - the hardware barrier should remind you of `gcc`'s compiler barrier,
+    which has the same semantics for language level memory accesses.
+    But, note: one is not a superset of the other.  It's worth thinking
+    about why!
+
+----------------------------------------------------------------
+#### Device configuration is not instantaneous
+
+Device enable can be extremely expensive.  Complex devices (such as
+gyroscope, accelerometer, network transceiver) are not going to be
+instantaneously active.  It's not uncommon for such devices to need 10
+or more milliseconds after "enable" to be in a legal state (million of
+cycles on the pi).
+
+Identically to memory ordering, just because your final store instruction
+to set the device's enable field was "completed" from the point of view
+of the CPU, that doesn't mean the device is good to go.  A too-soon
+subsequent read or write may get (or even cause) undefined results.
+
+While datasheets generally state how long initialization takes this
+information may be buried deep in the center of the PDF or the wording
+kind of weird.  In any case, for any complex device, it's not going to
+be instantaneously active: you'll want to do a close read looking for
+any table in the datasheet that says how long to wait.  Like device
+examples I'd say this should be collected on the first few pages.
+
+Similarly, if you're looking at device code and you don't see some kind
+of delay after initialization, the code is likely broken.  If you do
+see a delay, but it doesn't have a specific comment or datasheet page
+number, I'd say it's also likely broken.  E.g., people flying blind may
+just stick in a 30ms delay or so "just in case."
+
 ----------------------------------------------------------------
 #### Interrupts versus polling for device events
 
-When something happens on a device, how do you know about it?  You can
-either poll (explicitly check) or use interrupts (so the device signals
-the CPU which then jumps to an interrupt routine).  We discuss common
-patterns below.
+When the device has a result or performed an action: how do you know
+about it?  You can either poll (explicitly check) or use interrupts (so
+the device signals the CPU, which then jumps to an interrupt routine).
+We discuss common patterns below.
 
-At risk of getting too far into the weeds: for some devices, device-to-CPU
-messages can be triggered because of some external event, rather than
-being a reply to a request explicitly sent by code running on the CPU.
-The correctness problem is that if the driver code does not read the
-event soon enough, a second event will either (silently) overwrite it
-or get discarded (e.g., microphone, gyroscope or accelerometer readings).
+For some devices, device-to-CPU messages can be triggered because of
+some external event, rather than being a reply to a request explicitly
+sent by code running on the CPU.  The correctness problem is that if
+the driver code does not read the event soon enough, a second event
+will either (silently) overwrite it or get discarded (e.g., microphone,
+gyroscope or accelerometer readings).
 
 As a partial solution, some devices provide a FIFO queue to buffer
 results.  This helps, but doesn't solve the issue: FIFOs are finite,
@@ -345,24 +368,20 @@ not some fake thing I'm making up; you'll see the issue pretty soon:
     receive FIFO: if you wait too long and a fifth message arrives,
     one gets dropped.  
 
-    (For both cases I'm being vague because writing this made me realize
-    I didn't test if its the oldest or newest --- if you run an experiment
-    let us know!)
-
 These bugs suck.  They often won't show up when the system is ticking
-along slowly or with few nodes (e.g., as during testing) but only
-sporadically when you go full speed or add more nodes or tasks and
-then things will just lock up occasionally.  (Compounding the problem:
+along slowly or with few nodes or few tasks (e.g., as during testing)
+but only sporadically when you go full speed or add more nodes or tasks
+and then things will just lock up occasionally.  (Compounding the problem:
 "are you sure it's not a hardware bug?")
 
 To avoid dropping device results, the code must either sit in a "fast
-enough" loop "polling" for these events (e.g., by checking a status
-location over and over: "is there anything?")  or use _interrupts_ so
+enough" loop *polling* for these events (e.g., by checking a status
+location over and over: "is there anything?")  or use *interrupts* so
 that its device handling code runs soon-enough when there is something
 to do.  Polling is simple, but makes it hard to do other things ---
 do too many or take too long doing one and you missed your window.
 Interrupts make it easier to do other things, but are a great way to
-break your system since they they allow the interrupt routine to be
+break your system since the interrupt routine can get
 invoked on any instruction, begging for race conditions.
 
 In this class we will always build device code using polling first and
@@ -384,18 +403,18 @@ is false.  You can always poll.  And, in fact, polling is the superior
 solution in many of the use cases we will see.  E.g., if you are building
 a single-purpose device, rather than a general purpose OS, you can sit
 in a loop pretty easily checking all the different devices you have to
-see if something interesting occured.  A polling loop makes it feasible
+see if something interesting occurred.  A polling loop makes it feasible
 to much more thoroughly test your system --- maybe even to the point
 that you are surprised if it breaks.  However, if you add interrupts,
-I'd say you now almost-certainly have an impossilbe to test system ---
-interrupts allow the interrupt routine to be called on any instruction,
-exponentially blow up the state space of your code.  You can't exhaust
+I'd say you now almost-certainly made you system impossible-to-test ---
+the interrupt routine can run at any time, 
+exponentially blowing up your code's state space.  You can't exhaust
 this space with brute force testing.  (There are other tricks you can
 play, but operating systems people almost never know about them; we will
 do a few in cs240LX but that doesn't help us now.)
 
 ----------------------------------------------------------------
-#### How: device memory + compiler optimization = bugs
+#### Device memory + compiler optimization = bugs
 
 As discussed in the [COMPILE](../1-compile/volatile/README.md) note:
 The C compiler does not know about hardware devices nor does it know
@@ -421,156 +440,151 @@ like:
                 ;
         }
 
-This is very different than what you intended. As we discuss in
-another note, the traditional method OSes have used for this problem
-is to mark device pointers with the `volatile` type qualifier, which
-(roughly) tells the compiler the pointed to location can spontaneously
-change and thus the compiler should not add or remove any `volatile`
-load or store or reorder it with either its own accesses or with
-those of other `volatile` loads or stores (regular, non-volatile
+This is very different than what you intended. As discussed in
+[COMPILE](../1-compile/volatile/README.md) the traditional method OSes
+have used for this problem is to mark device pointers with the `volatile`
+type qualifier, which (roughly) tells the compiler the pointed to location
+can spontaneously change and thus the compiler should not add or remove
+any `volatile` load or store or reorder it with either its own accesses
+or with those of other `volatile` loads or stores (regular, non-volatile
 access have no guarantees).
 
 ----------------------------------------------------------------
-#### Rules for writing device code
+#### Some concrete rules for writing device code
 
-To do a new device:
+Heuristics for writing device code, not necessarily in order:
 
-  - Do a quick internet search for the device name and "errata".
-    I'd also suggest redoing it by adding "forum" or "bare metal"
-    to pull up more obscure issues.
+  - For external devices: ***Before you connect anything figure
+    out the device input and output voltage***.  This generally is in
+    the first table or set of bullets in the datasheet.  Always make
+    sure you get this right!
 
-  - First off: for external devices, figure out the device input
-    and output voltage.  Always make sure you get this right!
+    For the r/pi: obviously, do not connect a 3v device to a 5v pi pin!
+    But, also don't connect a 5v device to a 3v pi pin.  If you're
+    lucky this will cause the device to do nothing (e.g., all device
+    reads return `0`). But it might cause it to almost work -- sort-of
+    working stuff is hard to debug since it causes Heisenbugs, error
+    that come and go non-deterministically.
 
-    Obviously, do not connect a 3v device to a 5v pi pin!  But, also
-    don't connect a 5v device to a 3v pi pin.  If you're lucky this
-    will cause the device to do nothing (e.g., all device reads return
-    `0`). But it might cause it to almost work -- sort-of working stuff
-    is hard to debug since it causes Heisenbugs, error that come and
-    go non-deterministically.
+    Similarly: Never connect a device directly to a pi input pin if it's
+    not putting out around 3v.  Higher and the r/pi pins will shut down
+    (or the pi will fry); lower, the pi will not register it.
 
-    Similarly: Never use a device directly that puts out more or less
-    than 3v --- what the r/pi's pins expect.
+  - Do a quick internet search for the device name and "Application Note"
+    (for examples and suggestions) and "errata" (for bugs).
+
+    I'd also suggest redoing it by adding "forum" or "bare metal" to pull
+    up more obscure issues --- especially for hardware restrictions not
+    mentioned in any official document.
+
+  - When you set values, you have to determine if you must preserve
+    old values (so must read-modify-write) or can ignore them and just
+    set what you want (the GPIO `SET` and `CLR` registers).
+
+  - Check your work: When you write a value to the device for a field
+    that is both read and write, read it back and make sure that that
+    you wrote is what you get back (note: some device registers will
+    have bits that can change spontaneously).  You can add this check
+    to your device write procedure so it always occurs.
+
+    Trivial, but this hack has detected many bugs for me over the years.
+    (E.g., when the SPI protocol speed was wrong, when a jumper was
+    loose.)  If nothing else, it increases your confidence.
 
   - Find the values that must be true on reset.  Read the device after
     reboot and see that these are what you get.  If you don't the
     device could be broken (it happens, especially these days with
-    so many counterfeits).  Or you code could be broken --- e.g.,
-    the addresses you use.
- 
-    If things don't work: it's likely to be your code.  However,
-    hardware does go bad.
- 
-    Buy at least two devices: if the first doesn't work, try swapping
-    in the second.  Also try switching pi's --- sometimes pins get
-    fried, or jumps are too loose.
- 
-    Note easy mistakes: use pins where you don't have to count a bunch.
- 
-  - When you write a value to the device for a field that is both
-    read and write, read it back and make sure that that you wrote is
-    what you get back (note: some device registers will have bits that
-    can change spontaneously).
+    so many counterfeits).  Or you code could be broken --- e.g., the
+    addresses you use.
 
-    Trivial, but this hack has detected many bugs for me over the years.
-    If nothing else, it increases your confidence.
- 
-  - Use `put32` and `get32` to read or write the device locations
-    so that the compiler optimization does not blow up your code.
- 
-  - Use polling to get device results rather than jumping right into
-    interrupts.
-    
-  - If you have two devices that communicate, set up your pi in a
-    "loop back" configuration where it can send and receive to itself.
-    This will be at least 2x (maybe more) faster to develop since the
-    single pi knows exactly what it intends to do and what occured.
- 
+  - If things don't work: it's likely to be your code.  However, hardware
+    does go bad.
+
+    Buy at least two devices: if the first doesn't work, try swapping in
+    the second.  Also try switching pi's --- sometimes pins get fried,
+    or jumps are too loose.
+
+  - Avoid dumb counting mistakes by picking GPIO pins to use
+    where you simply cannot miscount.  E.g., use the lowest ground pin on
+    the left side (all the way on the bottom) or for GPIO pin 21 (all the
+    way on the bottom right) since you can't miscount either.  Every year
+    a non-trivial number of people get burned by mis-connecting.
+
+  - For devices that have multi-step configurations, usually you will
+    set the device to an "on" but disabled state when you (re-)configure
+    it.  Otherwise, it may start sending garbage out the world when you
+    are halfway done with configuration.
+
+  - Before access a built-in Broadcom device (GPIO, UART, SPI, I2C
+    etc), make sure you issue a hardware memory barrier (for us: call
+    `dev_barrier()`).
+
+    Similarly, you have to use a memory barrier when you write a routine
+    that accesses a device, but cannot *guarantee* all callers of the
+    routine either were using the same device or issued a memory barrier.
+
+    A big example of this: interrupt handlers, where likely have to do
+    a device barrier before and after.
+
+
   - If you are doing networking: in our experience, sending is pretty
-    robust, but receiving --- where an antennea has to cleanly decode
-    signals --- can be very sentitive to dirty power and cause receive
-    to fail.  This can be hard to figure out since the fact send "works"
-    means you will assume there is no hardware problem.
+    robust, but receiving --- where an antennae has to cleanly decode
+    signals --- can be very sensitive to dirty power (e.g., from your
+    laptop USB) and cause receive to fail.  This can be hard to figure
+    out since the fact send "works" means you will assume there is no
+    hardware problem.
+
+  - If there are FIFO queues you almost certainly want to clear them so
+    that after a re-config you don't send or receive garbage.  An easy
+    race condition: enable the device and then clear the FIFOs ---
+    a message from a previous session could arrive.  You want to clear
+    with the device disabled.
+
+  - A minor point but I have made this mistake: a follow-on device
+    that adds functionality to its predecessor may only be denoted with
+    with a "+" rather than a big red "version 2" or a different device
+    number.  If you're careless it's easy to buy the older version (e.g.,
+    because its getting liquidated at good prices) but pick up the later
+    datasheet and spend a ton of time writing code to use functionality
+    that simply does not exist on the device you have.
+
+
+Code suggestions:
 
   - When you write the code, add the datasheet page numbers for
-    why you did things.  You won't remember.  Plus, it let's
-    someone (like a TA) look at your code and see why you did 
-    something and if it makes sense.
- 
- - A very minor point but I have made this mistake: a revesion 2.0
-   might just be indicated with a "+" rather than a big red "version 2"
-   or a different device number.   If you're careles it's easy to buy the
-   older version (e.g., because its getting liquidated at good prices)
-   but pick up the later datasheet and spend a ton of time writing code
-   to use functionality that simply does not exist on the device you have.
-   I've done this.
+    why you did things.  You won't remember.  Plus, it let's someone
+    (like a TA) look at your code and see why you did something and if
+    it makes sense.
 
- - When you set values, you have to determine if you must preserve
-   old values (so must read-modify-write) or can ignore them
-   and just set what you want (the GPIO `SET` and `CLR` registers).
+  - If you have two devices that communicate, set up your pi in a
+    "loop back" configuration where it can send and receive to itself.
+    This has a larger initial cost to setup, but having a single pi that
+    can send and receive to itself makes development vastly simpler and
+    faster.   Obviously, you don't have to fuss with multiple pi's and the
+    doubling of problems that comes from 2x the hardware.  More subtly,
+    correctness checking gets simpler: one pi talking to itself always
+    knows ground truth and can compare that to what is being communicated.
 
----------------------------------------------------------------------
-#### Missing:
+  - Use `put32` and `get32` to read or write the device locations
+    so that the compiler optimization does not blow up your code.
 
-Some stuff that is missing:
- - The debug hardware on the rv is a good example of weird prose that
-   you have to think about but does what you want.
- - The Ou cache bug.
- - Bitbang.
- - Digital analyzer to make electrical printk.
- - SBZ
+  - Start by using polling to get device results rather than jumping
+    right into interrupts.
 
-----------------------------------------------------------------
-#### Intermixing memory and device memory operations.
-
-When these operations are intermixed with normal loads and stores,
-their cost can lead to the following hard-to-debug
-problem when 
-
-(I had one that literally took two days a few years back.)
-
-On many machines, including the pi, when you perform a store to a device,
-the store can return before the device operation completes. This hack
-can give a big speed improvement by, among other things, allowing you
-to pipeline operations to the same device.  However, it also can lead
-to subtle ordering mistakes.
-
-The pi does guarantee that all reads and writes to the same device occur
-in order (these operations are "sequentially consistent" w.r.t. each
-other). However it _does not_ guarantee that a write to one device A
-followed by a second write to device B will complete in that order. If
-they are entirely independent, this may not matter.  However, if the
-device operations were supposed to happen in that order (A then B),
-the code is broken.
-
-The way we handle this is to put in a "memory barrier" that
-(over-simplifying) guarantees that all previous loads and stores to memory
-or devices have completed before execution goes beyond the barrier. You
-can use these to impose ordering. We will discuss them at length
-later. There are some very subtle issues, especially when dealing with
-virtual memory hardware. We don't worry about this for the current lab.
+  - Arguable, but keep in mind: While devices have values they should
+    be reset to on restart, it's usually better not to assume them ---
+    either check that's the actual value, or set it explicitly (so,
+    for example, configure can be done twice with different values).
 
 
-----------------------------------------------------------------
-#### Correctness: Read reset values to santity check.
+  - Just because your code ran doesn't mean your code is correct.
+    Many device errors are subtle timing issues or not-handling corner
+    cases that happen under high load.  Or simply produce results that
+    you won't know how to check (is `1724` correct?  I don't know.)
 
-Of 
-
-----------------------------------------------------------------
-#### Correctness: I get 12517 from the devide, is that right?
-
-Who knows?
-
-Often have no idea if the value of the device is right.
-So find special cases where you can detect.
-For an analogue to digital converter, attach an attenuator that
-you can cycle between off and on (and multple that have different
-recistence)
-
-part of this:  datasheets will give value
-
-
-E.g, play an 80hz signal and see what you get from your microphone.
-
-Often there is 
+    A piece of code that ran and didn't crash doesn't at all imply
+    the device code is correct.  You'll have to read the datasheet
+    carefully, read your code carefully, put in assertions, and check
+    as many known examples as possible.  (This algorithm also doesn't
+    guarantee correctness, but at least it is less stupid.)
 
