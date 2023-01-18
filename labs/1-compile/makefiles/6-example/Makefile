@@ -7,12 +7,9 @@ src = $(wildcard ../4-example/*.c subdir/*.c)
 # all the directories  we use
 dirs := $(sort $(dir $(src)))
 
-# where to put the object files.
-build_dir = ./objs
-
 # relocate names to the build_dir to make later substitutions
 # easy
-reloc := $(foreach o, $(src), $(build_dir)/$(notdir $o))
+reloc := $(foreach o, $(src), $(notdir $o))
 
 # compute .o and .d names
 obj := $(reloc:.c=.o)
@@ -26,9 +23,7 @@ CFLAGS = -O -Wall -MMD $(inc)
 # the environment that the compilation takes place in.
 # should rerun if (1) change the makefile and (2) must
 # make the build_dir before anything.
-mk =  $(firstword $(MAKEFILE_LIST))
-env = $(mk) $(build_dir)
-env = $(build_dir)
+env = $(firstword $(MAKEFILE_LIST))
 
 # tell make where to search for prereqs.
 VPATH := $(dirs)
@@ -44,19 +39,13 @@ print:
 	echo "inc=<$(inc)>"
 	echo "mk=<$(mk)>"
 
-# add an order-only prereq to obj
-# https://www.gnu.org/software/make/manual/make.html#Prerequisite-Types
-$(obj): | $(build_dir)
-
-$(build_dir): ; mkdir -p $(build_dir)
- 
-
-$(NAME): $(obj)
+$(NAME): $(obj) $(env)
 	$(CC) $(CFLAGS) $(obj) -o $(NAME)
 
 -include $(dep)
 
-$(build_dir)/%.o: %.c
+%.o: %.c $(env)
+	# $$< = <$<>   $$@ = <$@>
 	$(CC) $(CFLAGS) -c $<  -o $@
 
 .PHONY: clean
@@ -69,8 +58,7 @@ test: $(NAME)
 	rm -f out
 
 
-
 clean:
-	rm -rf $(NAME) out *~ *.bak $(build_dir) 
+	rm -rf $(NAME) out *~ *.bak *.d *.o
 
 .PHONY: clean test print
