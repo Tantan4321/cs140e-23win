@@ -60,10 +60,9 @@ You'll implement the following routines in `code/gpio.c`:
   <img src="images/part1-succ-blue.jpg" width="450" />
 </p>
 
-6.  Make a copy of `2-input.c` (make sure it works with the makefile)
-    and change it so that it uses pins on two different banks.
-    Make sure it works as expected! You could also do more than
-    2 LEDs.
+6.  Make a copy of `1-blink.c` (make sure it works with the makefile) and
+    change it so that it uses pins on two different banks. Make sure it works
+    as expected! You could also do more than 2 LEDs.
 
 Hints: [hints doc](HINTS.md)
 
@@ -105,6 +104,11 @@ More detail:
 
 5.  Success looks like the following (note: we used a bare jumper, but that is
     likely asking for trouble):
+
+    If this doesn't work with the LED (but you see the LED you're using dimly
+    light up), try connecting a bare jumper to 3V and lightly touching the other
+    end to pin 21. Sometimes the voltage drop across the LED is too high to
+    trigger the Pi's input pin.
 
 <p float="left">
   <img src="images/part2-succ-on.jpg" width="450" />
