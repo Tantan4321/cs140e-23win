@@ -42,7 +42,7 @@ void gpio_set_output(unsigned pin) {
 void gpio_set_on(unsigned pin) {
     if(pin >= 32)
         return;
-  // implement this
+
     PUT32(gpio_set0, (1<<pin));
 }
 
@@ -50,12 +50,15 @@ void gpio_set_on(unsigned pin) {
 void gpio_set_off(unsigned pin) {
     if(pin >= 32)
         return;
-  // implement this
+
     PUT32(gpio_clr0, (1<<pin));
 }
 
 // set <pin> to <v> (v \in {0,1})
 void gpio_write(unsigned pin, unsigned v) {
+    if(pin >= 32)
+        return;
+
     if(v)
         gpio_set_on(pin);
     else
@@ -68,6 +71,9 @@ void gpio_write(unsigned pin, unsigned v) {
 
 // set <pin> to input.
 void gpio_set_input(unsigned pin) {
+    if(pin >= 32)
+        return;
+
     unsigned gpio_fsel =  (GPIO_BASE + 0x04 * (pin / 10));
     unsigned value = GET32(gpio_fsel);
     unsigned mask = (0x07 << (3 * (pin % 10)));
@@ -78,22 +84,25 @@ void gpio_set_input(unsigned pin) {
 
 // return the value of <pin>
 int gpio_read(unsigned pin) {
+    if(pin >= 32)
+        return -1;
+
     unsigned v = 0;
-
     unsigned lev = GET32(gpio_lev0);
-    if (lev & (1<<pin)) {
-        v = 1;
-    }
+    if (lev & (1<<pin)) v = 1;
 
-    return v;
+    return DEV_VAL32(v);
 }
 
 /**
  * Activate the pullup register on GPIO <pin>.
  *
  * GPIO <pin> must be an input pin.
- */
+ */.
 void gpio_set_pullup(unsigned pin){
+    if(pin >= 32)
+        return;
+
     PUT32(gpio_pud, 0b10);
     delay_cycles(150);
     PUT32(gpio_pudclk0, (1 << pin));
@@ -107,6 +116,9 @@ void gpio_set_pullup(unsigned pin){
  * GPIO <pin> must be an input pin.
  */
 void gpio_set_pulldown(unsigned pin) {
+    if(pin >= 32)
+        return;
+
     PUT32(gpio_pud, 0b01);
     delay_cycles(150);
     PUT32(gpio_pudclk0, (1 << pin));
@@ -120,9 +132,23 @@ void gpio_set_pulldown(unsigned pin) {
  * GPIO <pin> must be an input pin.
  */
 void gpio_pud_off(unsigned pin){
+    if(pin >= 32)
+        return;
+
     PUT32(gpio_pud, 0b00);
     delay_cycles(150);
     PUT32(gpio_pudclk0, (1 << pin));
     delay_cycles(150);
     PUT32(gpio_pudclk0, (0 << pin));
+}
+
+void gpio_set_function(unsigned pin, gpio_func_t func) {
+    if(pin >= 32 || func < 0 || func > 7)
+        return;
+    unsigned gpio_fsel =  (GPIO_BASE + 0x04 * (pin / 10));
+    unsigned value = GET32(gpio_fsel);
+    unsigned mask = (0x07 << (3 * (pin % 10)));
+    value &= ~mask;
+    value |= (func << (3 * (pin % 10)));
+    PUT32(gpio_fsel, value);
 }
