@@ -18,7 +18,7 @@ MAKEFLAGS += --no-print-directory
 # we only look at this output
 GREP_STR := "TRACE:"
 
-SUFFIXES: .out .run .check
+.SUFFIXES: .out .run .check 
 
 # this will be passed in by the caller.
 # TESTS      := $(patsubst %.c, %, $(TESTS_SRC)) 
@@ -34,25 +34,22 @@ TEST_OUT   := $(patsubst %, %.out, $(TESTS))
 # set whatever you want the default action to be.
 all: $(TEST_RUN) # $(TEST_CHECK) 
 
-%.run: ./%
-	@echo "\n-------------------<start>---------------------------------------";
-	./$* 
-	@echo "-------------------<end>---------------------------------------";
+%.run: %
+	@echo "\n-------------------[about to run <./$*]-----------------------";
+	pi-install ./$* 
+	@echo "-------------------[done running <./$*>]------------------------------------";
 
 # note: this will fail if output does not contain a trace.
 # we pull everything into .out so that it's easier to debug.
-%.out: ./%
-	./$* 2>&1  | grep $(GREP_STR) > ./$*.out
+%.out: %
+	pi-install ./$* 2>&1 > /dev/null | grep $(GREP_STR) > ./$<.out
 
-# can use:
-#    @grep  $(GREP_STR) ./$*.out | diff ./$*.test -
-%.check: ./% 
-	@echo -n "checking $*: ";
-	@./$* 2>&1 | grep  $(GREP_STR) > ./$*.test
-	@diff ./$*.out ./$*.test
-	@echo " Success!";
+%.check: % 
+	@echo -n "checking <$*>: ";
+	@pi-install ./$* 2>&1 > /dev/null | grep  $(GREP_STR) > ./$<.test
+	@diff ./$<.out ./$<.test
+	@echo " Success: <$*>!";
 	@rm ./$*.test
-
 
 # we could just cksum all the .outs, but this lets us be more targeted.
 %.cksum: %.out
@@ -60,7 +57,7 @@ all: $(TEST_RUN) # $(TEST_CHECK)
 
 # not sure if there is a better way: use these fake target to run our
 # checks for everything.
-emitall: $(TEST_EMIT) 
+emitall: $(TEST_OUT) 
 checkall: $(TEST_CHECK) 
 runall: $(TEST_RUN) 
 cksumall:  $(TEST_CKSUM)
@@ -68,6 +65,4 @@ cksumall:  $(TEST_CKSUM)
 cleanall:
 	rm -f *.out
 
-.PRECIOUS: $(TEST_OUT)
-
-.PHONY: all clean runall emitall checkall cksumall  $(TEST_EMIT) $(TEST_CHECK) 
+.PHONY: all clean runall emitall checkall cksumall 

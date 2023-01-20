@@ -1,76 +1,86 @@
-# trivial makefile: can define the SRC here or pass it in.
-# note: this is useful or dangerous: we strip out all the 
-# directory stuff so we can put the executable here.
-
+# TEST_SRC are all the files that get run.
+#    - you should start with the easiest first --- just do a single
+#      one of the 1-* files (these do single call)
+#    - then do all of them and see that you get the same "make checkoff"
+#      as other people
+#    - then do 2
+#    - then do 5
+#    - then do prog-*
 MAKEFLAGS += --no-print-directory
 
-# makefile variables: last writer wins (just like C), so 
-# you don't need to comment out assignments.
-
-# hardest; tell makefile to make everything.
-TEST_SRC := $(wildcard ./*.c) 
+### use this for checkoff: hardest b/c is everything.
+TEST_SRC := $(wildcard ./[1-5]-*.c) $(wildcard ./prog-*.c) 
 
 # easier: tell makefile to make the second batch of tests
-TEST_SRC := $(wildcard ./[2]-*.c) 
-
+TEST_SRC := $(wildcard ./[2]-*.c)
 # easiest: tell makefile to make the first batch of tests.
-TEST_SRC := $(wildcard ./[1]-*.c) 
+TEST_SRC := $(wildcard ./[1]-*.c)
+# just run one test.
 TEST_SRC := 1-gpio-read.c
 
 
-# make them local to this directory
-OBJS := $(patsubst %.c, %.o, $(TEST_SRC))
-OBJS := $(foreach obj, $(OBJS), ./$(notdir $(obj)))
-
-TEST_PROGS := $(patsubst %.o, %, $(OBJS))
-
-dep := $(OBJS:.o=.d)  # one dependency file for each source
-
-
-# pull out all the directories in the test files so make knows 
-# where to look for everything.
-# note: if tests have the same name, you'll get a collision.
-VPATH := $(sort $(dir $(TESTS)))
-
+# no other source code
+SRC = 
+# fake libpi
 LIBPI_FAKE = ../libpi-fake.a
-CC = gcc
 
-# where the libpi includes are
-CFLAGS =  -Wall -Wno-unused-function -Wno-unused-variable  -g
-CFLAGS += -I..
+TEST_OUT := $(TEST_SRC:.c=.out)
+FAKE_PROGS := $(TEST_SRC:.c=.fake)
+FAKE_RUN   := $(TEST_SRC:.c=.run)
 
-DEPS = ./Makefile $(LIBPI_FAKE) 
+INC  =  -I../  -I.
+INC +=  -I$(CS140E_2023_PATH)/libpi/include
+INC +=  -I$(CS140E_2023_PATH)/libpi/libc
+INC +=  -I$(CS140E_2023_PATH)/libpi/staff-src
+CFLAGS = $(INC) -O -Wall -Wno-unused-function -Wno-unused-variable
 
-all: libs $(TEST_PROGS) 
+DEPS = libpi-fake $(FAKE_PROGS) 
 
-libs:
-	make -C ../  
+all: libpi-fake $(FAKE_PROGS) #  $(FAKE_RUN)
 
-## we put all the executables here: how to remove?
-./%: %.o  $(DEPS) 
-	$(CC) $(CFLAGS) $< -o $@  $(LIBPI_FAKE)
+libpi-fake:
+	make -C .. 
 
--include $(dep)  # include dep files
+print:
+	# FAKE_PROGS = <$(FAKE_PROGS)>
+	# FAKE_RUN = <$(FAKE_RUN)>
+	# LIBPI_FAKE = <$(LIBPI_FAKE)>
 
-%.d: %.c
-	@$(CC) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+
+%.fake: %.c  $(SRC) $(LIBPI_FAKE)
+	$(CC) $(CFLAGS) $< $(SRC) -o $*.fake $(LIBPI_FAKE)
+
+#%.run: %.fake
+#	@echo "------------------------------------------------------ "
+#	@echo "       running our fake pi program: <$*.fake>         "
+#	./$*.fake
+
+clean:
+	rm -rf *.fake *~ *.o Makefile.bak  
+
+cleanall:
+	make -C ./ clean
+	make -C ../ clean
+	rm -f *.out
 
 
 # i'm not sure this actually makes things better.
-emit: $(DEPS) $(TEST_PROGS)
-	@make -f ./Makefile.test emitall "TESTS=$(TEST_PROGS)"
-run: $(DEPS) $(TEST_PROGS)
-	@make -f ./Makefile.test runall "TESTS=$(TEST_PROGS)"
-check: $(DEPS) $(TEST_PROGS)
-	@make -f ./Makefile.test checkall "TESTS=$(TEST_PROGS)"
-cksum: $(DEPS) $(TEST_PROGS)
-	@make -f ./Makefile.test cksumall "TESTS=$(TEST_PROGS)"
+emit: $(DEPS)
+	make -f ./Makefile.test emitall "TESTS=$(FAKE_PROGS)"
+run: $(DEPS)
+	make -f ./Makefile.test runall "TESTS=$(FAKE_PROGS)"
+check: $(DEPS)
+	make -f ./Makefile.test checkall "TESTS=$(FAKE_PROGS)"
+cksum: $(DEPS)
+	@make -f ./Makefile.test cksumall "TESTS=$(FAKE_PROGS)"
 
-clean:
-	rm -rf $(TEST_PROGS) *~ tags *.o Makefile.bak *.d
+checkoff: $(DEPS)
+	@ls $(TEST_OUT)
+	@echo -n "total files = ";
+	@ls $(TEST_OUT) | wc  -l
+	@echo -n "checksum of cksum = ";
+	@ls $(TEST_OUT) | sort -n | cksum 
 
-cleanall:
-	@make -s -f ./Makefile clean
-	@make -s -f ./Makefile.test cleanall TESTS=x
 
-.PHONY: all clean libs run check emit
+
+.PHONY: all clean  run  print

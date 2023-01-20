@@ -39,19 +39,28 @@
 //      and interact with the weird broadcom chip and run it on
 //      your laptop, which has neither, *without making any change!*
 //
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 // there is no assembly or other weird things in rpi.h so we can
 // include and use it on your laptop even tho it is intended for
 // the pi.
+
 #include "rpi.h"
+#undef output
+#undef debug
+#undef panic
+#undef trace
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+
 #include "fake-pi.h"
 
 /***********************************************************************
  * some macros to make error reporting easier.
  */
+
 
 
 // print output

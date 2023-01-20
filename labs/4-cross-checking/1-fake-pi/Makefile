@@ -1,56 +1,60 @@
-# copy your gpio.c to this directory.
+LIBNAME = libpi-fake.a
 
-# our name for the library
-TARGET = libpi-fake.a
+# grab stuff from libpi
+LPP = $(CS140E_2023_PATH)/libpi/
+SRC  = $(LPP)/libc/printk.c
+SRC  += $(LPP)/libc/putk.c
+SRC  += $(LPP)/libc/putchar.c
+SRC  += $(LPP)/staff-src/clean-reboot.c
+SRC  += $(wildcard ./*.c)
 
-# the different code we want to test.
-PROG_SRC = tests/prog-1-blink.c tests/prog-2-blink.c tests/prog-3-input.c
-
-PROG_OBJS := $(PROG_SRC:.c=.o)
-PROG_OBJS := $(foreach obj, $(PROG_OBJS), ./$(notdir $(obj)))
-PROGS := $(patsubst %.o, ./%, $(PROG_OBJS))
-
-# grab all .c files in the current directory
-SRC :=  $(REAL_SRC) $(wildcard ./*.c)
-OBJS := $(patsubst %.c, %.o, $(SRC))
-OBJS := $(foreach obj, $(OBJS), ./$(notdir $(obj)))
-
-dep := $(OBJS:.o=.d)  # one dependency file for each source
-
-# automatically give make the directories to look in.
-VPATH := $(sort $(dir $(SRC))):$(sort $(dir $(PROG_SRC)))
-
-CC=gcc
-CFLAGS = -Wall -g -std=gnu99  -Werror -Wno-unused-function -Wno-unused-variable
-# added the include path for libpi-fake
-# CFLAGS += -I$(DIR)
-CFLAGS += -I.
-
-DEPS := ./Makefile
-
-all : $(OBJS) $(PROG_OBJS) $(PROGS) $(TARGET) # $(OBJS) 
-
-# fix this rule: can't delete the targets in <all>
-./%.o: %.c $(DEPS)
-	$(CC) $(CFLAGS) -c $< -o $(notdir $@)
-
-$(TARGET): $(OBJS) $(DEPS)
-	ar cr $(TARGET) $(OBJS) 
-
-./%: ./%.o $(OBJS) $(DEPS) 
-	$(CC) $(CFLAGS) $(OBJS) $< -o $@ 
-
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),cleanall)
--include $(dep)  # include dep files
-endif
+# or copy your GPIO here.
+ifndef CS140E_STAFF
+SRC  += ../../3-gpio/code/gpio.c 
+else
+SRC  += $(LPP)/staff-private/gpio.c 
 endif
 
-./%.d: %.c
-	$(CC) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+INC +=  -I$(CS140E_2023_PATH)/libpi/include
+INC +=  -I$(CS140E_2023_PATH)/libpi/libc
+INC +=  -I$(CS140E_2023_PATH)/libpi/staff-src
+INC +=  -I.
+CFLAGS = $(INC) -O -Wall -Wno-unused-function -Wno-unused-variable -MMD -DRPI_UNIX
 
-clean :
-	rm -f *.o *.d *~ Makefile.bak $(NAME) *.pitag  $(PROGS) $(TARGET)
-	make -C tests clean
+# all the directories we get code from.
+dirs := $(sort $(dir $(SRC)))
 
-.PHONY: clean tags libs run check 
+# tell make where to search for prereqs.
+VPATH := $(dirs)
+
+# strip all the directories
+reloc := $(foreach o, $(SRC), $(notdir $o))
+OBJS := $(reloc:.c=.o)
+
+dep := $(reloc:.c=.d)
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(OBJS)
+	ar cr $(LIBNAME) $(OBJS)
+
+-include $(dep)
+
+%.o: %.c 
+	$(CC) $(CFLAGS) -c $< -o $@
+
+check:
+	@make -s -C tests check
+run:
+	@make -s -C tests run
+emit:
+	@make -s -C tests emit
+cksum:
+	@make -s -C tests cksum
+checkoff:
+	@make -s -C tests checkoff
+
+clean:
+	rm -rf *.o *~ *.o Makefile.bak   $(LIBNAME) *.d
+
+.PHONY: all clean 
