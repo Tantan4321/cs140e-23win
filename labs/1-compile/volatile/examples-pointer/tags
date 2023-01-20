@@ -1,0 +1,40 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/eastan/Desktop/cs140e-23win/labs/1-compile/volatile/examples-pointer/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	//
+$(EX)-pointer.o	Makefile	/^$(EX)-pointer.o: $(EX)-pointer.c$/;"	t
+%.o	Makefile	/^%.o: %.c$/;"	t
+CC	Makefile	/^CC = arm-none-eabi-gcc $/;"	m
+CFLAGS	Makefile	/^CFLAGS = -O2 -g$/;"	m
+EX	Makefile	/^EX=9$/;"	m
+MK	Makefile	/^MK = make  --no-print-directory$/;"	m
+all	Makefile	/^all: $(EX)-pointer.o$/;"	t
+bar	4-pointer.c	/^void bar(void) {$/;"	f	typeref:typename:void
+bar	5-pointer.c	/^void bar(void) { }$/;"	f	typeref:typename:void
+clean	Makefile	/^clean:$/;"	t
+double_check_lock_idiom	8-pointer.c	/^void double_check_lock_idiom(struct foo **out) {$/;"	f	typeref:typename:void
+foo	0-pointer.c	/^void foo(void) {$/;"	f	typeref:typename:void
+foo	1-pointer.c	/^void foo(int *p) {$/;"	f	typeref:typename:void
+foo	2-pointer.c	/^void foo(int *p) {$/;"	f	typeref:typename:void
+foo	3-pointer.c	/^void foo(int *p) {$/;"	f	typeref:typename:void
+foo	4-pointer.c	/^void foo(int *p) {$/;"	f	typeref:typename:void
+foo	5-pointer.c	/^void foo(int *p) {$/;"	f	typeref:typename:void
+foo	6-pointer.c	/^void foo(int *p, int *q) {$/;"	f	typeref:typename:void
+foo	7-pointer.c	/^struct foo { int x; };$/;"	s	file:
+foo	8-pointer.c	/^struct foo { int x; };$/;"	s	file:
+init_foo	7-pointer.c	/^void init_foo(struct foo **out) {$/;"	f	typeref:typename:void
+main	10-pointer.c	/^int main(void) {$/;"	f	typeref:typename:int
+main	9-pointer.c	/^int main(void) {$/;"	f	typeref:typename:int
+x	2-pointer.c	/^static int x;$/;"	v	typeref:typename:int	file:
+x	3-pointer.c	/^static int x;$/;"	v	typeref:typename:int	file:
+x	4-pointer.c	/^static int x;$/;"	v	typeref:typename:int	file:
+x	5-pointer.c	/^int x;$/;"	v	typeref:typename:int
+x	7-pointer.c	/^struct foo { int x; };$/;"	m	struct:foo	typeref:typename:int	file:
+x	8-pointer.c	/^struct foo { int x; };$/;"	m	struct:foo	typeref:typename:int	file:
