@@ -15,7 +15,7 @@
 #   SRC := $(wildcard ./src/*.[Sc])
 #
 # currently not defined to hold anything
-SRC :=
+SRC := ./src/gpio.c
 
 # if you want to use our gpio.o or other .o (e.g., if yours
 # is acting weird):
@@ -23,7 +23,7 @@ SRC :=
 #   2. add it to STAFF_OBJS 
 #
 # currently: use our uart.o (for printk) and gpio.o
-STAFF_OBJS  +=  ./staff-objs/gpio.o
+# STAFF_OBJS  +=  ./staff-objs/gpio.o
 STAFF_OBJS  +=  ./staff-objs/uart.o
 STAFF_OBJS  +=  ./staff-objs/gpio-pud.o
 STAFF_OBJS  +=  ./staff-objs/gpio-int.o 
