@@ -26,10 +26,7 @@ Big picture:
       to write, especially as compared to on a modern OS.
 
    3. You'll then implement system calls --- these work using exceptions
-      which possibly confusingly use the same interrupt methods.
-
-   4. Finally, you'll replace the crude method of dispatching
-      handling interrupts with a faster, more flexible approach.
+      which possibly confusingly use the same interrupt methods. 
 
 Interrupts confuse people.  Often they get implemented in a complicated
 way, or get discussed so abstractly it's hard to understand them.
@@ -42,30 +39,18 @@ pretty firm grasp.
 
 Turn-in:
 
-  1. `timer-int`: give the shortest time between timer interrupts you can
-     make.  Make two small edits to the `timer-int-ex` register save and
-     restore that make the code crash in different locations.  This will
-     help get an intuition for how things can go wrong.
+  1. `0-timer-int`: give the shortest time between timer interrupts
+     you can make.  Make two small edits to the `0-timer-int` register
+     save and restore code (in `interrupts-asm.S`) that make the code
+     crash in different locations.  This will help get an intuition for
+     how things can go wrong.
 
-  2. Implement `gprof` (in the `2-gprof` subdirectory).   When you
+  2. `1-gprof`: Implement `gprof.c`.   When you
      run you should see most of the time being spent in `PUT32`, `GET32`
      or the `uart` routines.
 
-  3. Replace the interrupt handling code 
-
- measure the overhead?
-
-  2. Add code so that swi works.
-  3. Add code for breakponts: print out the breakpoint and skip it.
-  2. Build a simple system call: show your `1-syscall` works.
-  4. switch all the way to user level.
-  5. switch between two different routines.
-
-  3. Use vector-base to setup interrupts.  This is much better.
-  4. Use dynamic code generation to rewrite the vector base table.
-
-   use a queue to push stuff between interrupt and 
-
+  3. `2-syscall`: `make check` passes.   In particular, for `1-syscall.c`
+      You can switch to User level, run a system call, and resume.
 
 -----------------------------------------------------------------
 #### Background: Why interrupts
@@ -154,26 +139,106 @@ Look through the code in `timer-int-ex`, compile it, run it.  Make sure
 you can answer the questions in the comments.  We'll walk through it
 in class.
 
+-----------------------------------------------------------------------------
+### Part 1: Using interrupts to build a profiler.
+
+The nice thing about doing everything from scratch is that simple things
+are simple to do.  We don't have to fight a big OS that can't get out
+of its own way.
+
+Today's lab is a good example: implementing a statistical profiler.
+The basic intuition:
+   1. Setup timer interrupts so that you get them fairly often.
+   2. At each interrupt, get the address of the interrupted program
+      counter and increment a counter associated with it.  
+   3. Over time, these counts will build up: the locations with the
+      highest count will be where your code spends most of its time.
+
+The implementation will take about 30-40 lines of code in total.
+
+
+The basic algorithm:
+
+ 1. Use `kmalloc` to allocate an array at least as big as the code.
+    (We give you  a trivial `kmalloc` to use.)  Compute the code
+    size using the labels defined in `libpi/memmap` (we give C
+    definitions in `libpi/include/memmap.h`).
+
+ 2. In the interrupt handler, use the program counter value to index
+    into this array and increment the associated count.  NOTE: its very
+    easy to mess up sizes.  Each instruction is 4 bytes, so you'll divide
+    the `pc` by 4.
+
+ 3. Periodically you can print out the non-zero values in this array
+    along with the `pc` value they correspond to.  You should be able to
+    look in the disassembled code (`gprof.list`) to see which instruction
+    these correspond to.
+
+    NOTE: We do not want to profile our profiling code, so have a way
+    to disable counts when doing this printing.
+
+ 4. Expected results are most counts should be in `PUT32`, `GET32`,
+    and various `uart` routines.  If you see a bunch of your `gprof`
+    program counters its b/c of a mistake in step 3.
+
+Congratulations!  You've built something that not many people in the
+Gates building know how to do.
 
 ----------------------------------------------------------------------------
-### Part 1: make a simple system call.
+### Part 2: make a simple system call.
 
 One we can get timer exceptions, we (perhaps surprisingly) have enough
 infrastructure to make trivial system calls.   Since we are already
 running in supervisor mode, these are not that useful as-is, but making
-them now will show how trivial they actually are.  In particular, look in
-`1-syscall` and write the needed code in:
+them now will show how trivial they actually are.  
 
-  1. `interrupts-asm.S`: you should be able to largely rip off the timer interrupt
-     code to forward system call.  NOTE: a huge difference is that we are
-     already running at supervisor level, so all registers are live.  You need
-     to handle this differently.
+You will implement two versions:
+  - `0-syscall.c`: this just calls system calls at our current process
+     level.  If you look in `libpi/staff-start.S` you see we start in
+     `SUPER_MODE`, which is the same level system calls run at.  This
+     means we already have a live stack pointer and you shouldn't use it.
 
-  2. `syscall.c`: finish the system call vector code (should just be a few lines).
-     You want to act on system call 1 and reject all other calls with a `-1`.
+  - `1-syscall.c`: this is a real system call.  You will implement the
+     code to switch to user level, and then handle two trivial system
+     calls.
+
+
+##### `0-syscall.c`
+
+Look in `2-syscall` and write the needed code in:
+
+  1. `interrupts-asm.S`: you should be able to largely rip off the
+     timer interrupt code to forward system call.  NOTE: a huge difference
+     is that we are already running at supervisor level, so all registers
+     are live.  You need to handle this differently.
+
+
+  2. `0-syscall.c`: finish the system call vector code (should just be
+     a few lines).  You want to act on system call 1 and reject all
+     other calls with a `-1`.
 
 This doesn't take much code, but you will have to think carefully about which
 registers need to be saved, etc.
+
+##### `1-syscall.c`
+
+This is a real system call.  You'll need to:
+  1. Make a new interrupt table that uses a different `swi` handler.
+     You should copy and paste the existing one and update any labels.
+     Admittedly this is mechanical work, but you need to think 
+     slightly.
+  2. Implement `run_user_code_asm`: this will switch to user mode,
+     set the stack pointer register to a given stack value, and
+     jump to a give code address.  
+
+     For hints: look at `notes/mode-bugs/bug4-asm.S` for how to roughly
+     do what you want at a different level.
+
+  3. Finish implementing `1-syscall.c:syscall_vector`.  This is
+     mainly just checking that you are at the right level.
+
+If this works, congratulations!  You have a working user-level
+system call.  This small amount of code is really all there is to it.
 
 ------------------------------------------------------------------------
 ### Part 3: use the vector register: 3-vector-base
@@ -202,7 +267,7 @@ What to do:
      base register file (which you will have to include) instead of
      copying the table itself.
 
-     As usual: Make sure to add that file to `put-your-src-here.mk`.
+     As usual: Make sure to add that file to `libpi/Makefile`.
 
   3. Make a copy of your `1-gpio-int` directory and convert it over to
      use the vector base method.
@@ -211,33 +276,6 @@ What to do:
      from your save-restore in the interrupt handler.   If should be
      the case that if you "clobber" a callee-saved register you do
      not want to skip, `gcc` will not save it.
-
------------------------------------------------------------------------------
-### Part 2: Using interrupts to build a profiler.
-
-The nice thing about doing everything from scratch is that simple things are simple
-to do.  We don't have to fight a big OS that can't get out of its own way.   
-
-Today's lab is a good example: implementing a statistical profiler.  The basic intuition:
-   1. Setup timer interrupts so that we get them fairly often.
-   2. At each interrupt, record which location in the code we interrupted.  (I.e., where
-      the program counter is.)
-   3. Over time, we will interrupt where your code spends most of its time more often.
-
-The implementation will take about 30-40 lines of code in total.  You'll build two things:
- 1. A `kmalloc` that will allocate memory.  We will not have a `free`, so `kmalloc` is
-   trivial: have a pointer to where "free memory" starts, and increment a counter based
-   on the requested size.
- 2. Use `kmalloc` to allocate an array at least as big as the code.
- 3. In the interrupt handler, use the program counter value to index into this array
-    and increment the associated count.  NOTE: its very easy to mess up sizes.  Each
-    instruction is 4 bytes, so you'll divide the `pc` by 4.  
- 4. Periodically you can print out the non-zero values in this array along with the 
-   `pc` value they correspond to.  You should be able to look in the disassembled code
-   (`gprof.list`) to see which instruction these correspond to.
-
-Congratulations!  You've built something that not many people in the Gates building
-know how to do.
 
 -----------------------------------------------------------------------------
 ### lab extensions:
