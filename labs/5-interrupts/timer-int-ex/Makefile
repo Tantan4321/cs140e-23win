@@ -6,7 +6,7 @@ COMMON_SRC := interrupts-c.c	timer-interrupt.c interrupts-asm.S
 
 # define this if you need to give the device for your pi
 TTYUSB = 
-BOOTLOADER = my-install
+BOOTLOADER = pi-install
 
 # uncomment if you want it to automatically run.
 RUN=1
