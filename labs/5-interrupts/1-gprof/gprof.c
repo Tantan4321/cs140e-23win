@@ -24,24 +24,38 @@
  *	- gprof_inc(pc) will increment pc's associated entry.
  *	- gprof_dump will print out all samples.
  */
+static unsigned *table;
 
 // allocate table.
 //    few lines of code
 static unsigned gprof_init(void) {
-    unimplemented();
+    unsigned size = __code_end__ - __code_start__;
+    table = kmalloc(size);
+    for (int i = 0; i < size; i++) {
+        table[i] = 0;
+    }
+    return 0;
 }
 
 // increment histogram associated w/ pc.
 //    few lines of code
 static void gprof_inc(unsigned pc) {
-    unimplemented();
+    unsigned inc = (pc - (unsigned)__code_start__) / 4;
+    table[inc]++;
 }
 
 // print out all samples whose count > min_val
 //
 // make sure sampling does not pick this code up!
 static void gprof_dump(unsigned min_val) {
-    unimplemented();
+    system_disable_interrupts();
+    unsigned size = __code_end__ - __code_start__;
+    for (int i = 0; i < size; i++) {
+        if(table[i] > min_val) {
+            printk("Instruction: %x, with count: %d\n", (i * 4) + (unsigned)__code_start__, table[i]);
+        }
+    }
+    system_enable_interrupts();
 }
 
 
