@@ -93,10 +93,10 @@ void notmain() {
              tot_usec   = (tot % 1000);
     printk("-----------------------------------------\n");
     printk("summary:\n");
-    printk("\t%10d: total iterations\n", iter);
-    printk("\t%10d: tot interrupts\n", N);
-    printk("\t%10d: iterations / interrupt\n", iter/N);
-    printk("\t%10d: average period\n\n", period_sum/(N-1));
+    printk("\t%d: total iterations\n", iter);
+    printk("\t%d: tot interrupts\n", N);
+    printk("\t%d: iterations / interrupt\n", iter/N);
+    printk("\t%d: average period\n\n", period_sum/(N-1));
     printk("total execution time: %dsec.%dms.%dusec\n", 
                     tot_sec, tot_ms, tot_usec);
 
