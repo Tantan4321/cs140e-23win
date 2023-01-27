@@ -81,8 +81,9 @@ MK_FN(write_regs_to_stack)
 
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     @ push all the callee
+    push {r4-r11, lr}
     @ store sp into the address held in r0
-    asm_todo(implement this)
+    str sp, [r0]
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
     mov r0, sp
