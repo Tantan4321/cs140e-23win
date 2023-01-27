@@ -49,17 +49,17 @@ lab, such bugs are hard to debug.  So before you write a bunch of code:
 
 #### Before you start: make sure everything works.
 
-Run `make checkoff` in the `code/` directory: it should pass.
+Run `make checkoff` in the `code-threads/` directory: it should pass.
 
-  - By default the `code/Makefile` will use our staff code in libpi.
-  - If you run `make checkoff` in `code` all the tests should pass.
+  - By default the `code-threads/Makefile` will use our staff code in libpi.
+  - If you run `make checkoff` in `code-threads` all the tests should pass.
   - Before you start implementing, comment out `USE_STAFF=1` in
-    `code/Makefile` so that the Makefile will use your code.
+    `code-threads/Makefile` so that the Makefile will use your code.
     You can flip back and forth to test.
 
 #### Checkoff:
 
-   - You pass `make checkoff` in the `code/` directory.
+   - You pass `make checkoff` in the `code-threads/` directory.
    - Various extensions are in: [EXTENSIONS](./EXTENSIONS.md)
 
 ----------------------------------------------------------------------
@@ -240,8 +240,10 @@ Given your have done state saving both in the interrupt labs and in Part 1
 above you should be able to implement `rpi_cswitch` without too much fuss:
 
   - Put your `cswitch` code into `rpi_cswitch` in `thread-asm.S`
-    This will be based on your code from `2-write-regs-asm.S` except
-    that you will add the code to restore the registers as well.
+    This will be based on your code 
+    `code-asm-checks/asm-checks.S:write_regs_to_stack` 
+    (from part 1),
+    except that you will add the code to restore the registers as well.
     For today: only save the callee saved registers.  Since we are doing
     non-pre-emptive threads, the compiler will have saved any live caller
     registers when calling `rpi_yield`.
