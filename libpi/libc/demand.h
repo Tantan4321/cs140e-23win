@@ -9,7 +9,7 @@
 
 // print file:function:line with a message.
 #define debug(msg, args...) \
-    (printk)("%s:%s:%d:" msg, __FILE__, __FUNCTION__, __LINE__, ##args)
+    (printk)("%s:%s:%d:DEBUG:" msg, __FILE__, __FUNCTION__, __LINE__, ##args)
 
 #define output printk
 
@@ -30,6 +30,11 @@
 
 // stringify argument
 #define _XSTRING(x) #x
+
+
+// turn __LINE__ into a strig
+#define LINE_STR_HELPER(x)  _XSTRING(x)
+#define LINE_STR()  LINE_STR_HELPER(__LINE__)
 
 // usage: 
 //      demand(expr, msg)
