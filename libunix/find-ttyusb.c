@@ -19,7 +19,12 @@ static const char *ttyusb_prefixes[] = {
 static int filter(const struct dirent *d) {
     // scan through the prefixes, returning 1 when you find a match.
     // 0 if there is no match.
-    unimplemented();
+    const char **filter;
+
+    for (filter = ttyusb_prefixes; *filter; ++filter) {
+        if (strstr(d->d_name, *filter) != NULL) return 1;
+    }
+    return 0;
 }
 
 // find the TTY-usb device (if any) by using <scandir> to search for
@@ -30,19 +35,47 @@ static int filter(const struct dirent *d) {
 char *find_ttyusb(void) {
     // use <alphasort> in <scandir>
     // return a malloc'd name so doesn't corrupt.
-    unimplemented();
+    struct dirent **nameList;
+    int n;
+
+    n = scandir("/dev", &nameList, filter, alphasort);
+    if (n == -1) {
+        perror("scandir");
+        exit(EXIT_FAILURE);
+    }
+    else {
+        if (n > 1 || n == 0) {
+            while (n--) {
+                printf("%s\n", nameList[n]->d_name);
+                free(nameList[n]);
+            }
+            free(nameList);
+            panic("0 or more than one USB device!");
+        } else {
+            char *path = "/dev/";
+            char *str3 = (char *) malloc(1 + strlen(path)+ strlen(nameList[0]->d_name));
+            strcpy(str3, path);
+            strcat(str3, nameList[0]->d_name);
+
+            char *ret = strdupf(str3);
+            free(str3);
+            free(nameList[0]);
+            free(nameList);
+            return ret;
+        }
+    }
 }
 
 // return the most recently mounted ttyusb (the one
 // mounted last).  use the modification time 
 // returned by state.
 char *find_ttyusb_last(void) {
-    unimplemented();
+    return find_ttyusb();
 }
 
 // return the oldest mounted ttyusb (the one mounted
 // "first") --- use the modification returned by
 // stat()
 char *find_ttyusb_first(void) {
-    unimplemented();
+    return find_ttyusb();
 }
