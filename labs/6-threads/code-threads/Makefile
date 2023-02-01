@@ -1,6 +1,6 @@
 # to start with use our objects.
 # for checkoff this should be 0
-USE_STAFF = 1
+USE_STAFF = 0
 
 PART ?= 1
 

@@ -54,7 +54,6 @@ MK_FN(push_r4_r12_asm)
     mov sp, r1      @ restore sp
     pop {r4-r12}    @ restore trashed regs
     bx lr
-    asm_todo(implement check_push_order_asm)
 
 
 @ save just the callee and lr.

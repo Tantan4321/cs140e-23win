@@ -1,5 +1,4 @@
 // checks if stack grows up or down.
-// implement <todo>
 #include "rpi.h"
 
 // get the current sp register.
