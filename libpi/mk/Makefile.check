@@ -45,6 +45,7 @@ all: $(TEST_RUN) # $(TEST_CHECK)
 %.run: %.bin
 	@echo "\n----------------[about to run <./$*]-----------------------";
 	$(BOOT_CMD) ./$< 
+	@sleep 1
 	@echo "-----------------[done running <./$*>]-----------------------";
 
 %.err: %.bin
