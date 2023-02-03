@@ -14,16 +14,82 @@
 //
 #include "rpi.h"
 
+#define BAUD_REG_VAL 270
+
+// see broadcomm documents for magic addresses.
+enum {
+    AUX_BASE = 0x20215000,
+    AUX_ENB = (AUX_BASE + 0x04),  // p. 9 disable uart
+    AUX_IO = (AUX_BASE + 0x40),  // p. 11 writing data
+    AUX_IER = (AUX_BASE + 0x44),  // p. 12 disable interrupts
+    AUX_IIR = (AUX_BASE + 0x48),  // p. 13 clearing rx and tx FIFO
+    AUX_LCR = (AUX_BASE + 0x4C),  // p. 14 set to put UART in 8-bit mode
+    AUX_LSR = (AUX_BASE + 0x54),  // p. 15 Can tx? see if "empty"
+    AUX_CNTL  = (AUX_BASE + 0x60),  // p. 17 enable disable Uart tx rx
+    AUX_STAT = (AUX_BASE + 0x64), // p. 18 see rx tx status
+    AUX_BAUD = (AUX_BASE + 0x68)  // p. 19 write baud rate
+};
+
 // called first to setup uart to 8n1 115200  baud,
 // no interrupts.
 //  - you will need memory barriers, use <dev_barrier()>
 //
 //  later: should add an init that takes a baud rate.
 void uart_init(void) {
+    // set RX pin
+    gpio_set_function(GPIO_RX, GPIO_FUNC_ALT5);
+    // set TX pin
+    gpio_set_function(GPIO_TX, GPIO_FUNC_ALT5);
+
+    // Enable miniUART
+    unsigned val = GET32(AUX_ENB);
+    unsigned mask = 0x01;
+    val &= ~mask;
+    val |= 0x01;
+    PUT32(AUX_ENB, val);
+
+    dev_barrier();
+
+    // Immediately disable Rx/Tx
+    val = GET32(AUX_CNTL);
+    mask = 0x02;
+    val &= ~mask;
+    val |= 0x0;
+    PUT32(AUX_CNTL, val);
+
+    // Clear TX and RX FIFO
+    val = GET32(AUX_IIR);
+    mask = 0b110;
+    val &= ~mask;
+    val |= 0b110;
+    PUT32(AUX_IIR, val);
+
+    // Disable interrupts
+    val = GET32(AUX_IER);
+    mask = 0x02;
+    val &= ~mask;
+    val |= 0b00;
+    PUT32(AUX_IER, val);
+
+    // Set UART to 8n1
+    PUT32(AUX_LCR, 0b11);
+
+    // Set baudrate to 115200
+    PUT32(AUX_BAUD, (uint16_t)BAUD_REG_VAL);
+
+    // Enable Rx/Tx
+    val = GET32(AUX_CNTL);
+    mask = 0x02;
+    val &= ~mask;
+    val |= 0x02;
+    PUT32(AUX_CNTL, val);
+
+
 }
 
 // disable the uart.
 void uart_disable(void) {
+
 }
 
 
