@@ -25,6 +25,7 @@ enum {
     AUX_IER = (AUX_BASE + 0x44),  // p. 12 disable interrupts
     AUX_IIR = (AUX_BASE + 0x48),  // p. 13 clearing rx and tx FIFO
     AUX_LCR = (AUX_BASE + 0x4C),  // p. 14 set to put UART in 8-bit mode
+    AUX_MCR = (AUX_BASE + 0x50),  // p. 14 control 'modem' signals (we don't use
     AUX_LSR = (AUX_BASE + 0x54),  // p. 15 Can tx? see if "empty"
     AUX_CNTL  = (AUX_BASE + 0x60),  // p. 17 enable disable Uart tx rx
     AUX_STAT = (AUX_BASE + 0x64), // p. 18 see rx tx status
@@ -37,6 +38,7 @@ enum {
 //
 //  later: should add an init that takes a baud rate.
 void uart_init(void) {
+    dev_barrier();
     // set RX pin
     gpio_set_function(GPIO_RX, GPIO_FUNC_ALT5);
     // set TX pin
@@ -55,20 +57,25 @@ void uart_init(void) {
     // Immediately disable Rx/Tx
     PUT32(AUX_CNTL, 0b00);
 
-    // Clear TX and RX FIFO
-    PUT32(AUX_IIR, 0b110);
-
     // Disable interrupts
     PUT32(AUX_IER, 0b00);
 
     // Set UART to 8n1
     PUT32(AUX_LCR, 0b11);
 
+    // Zero out unused MCR reg
+    PUT32(AUX_MCR, 0x0);
+
+    // Clear TX and RX FIFO
+    PUT32(AUX_IIR, 0b110);
+
     // Set baudrate to 115200
     PUT32(AUX_BAUD, (uint16_t)BAUD_REG_VAL);
 
     // Enable Rx/Tx
     PUT32(AUX_CNTL, 0b11);
+
+    dev_barrier();
 }
 
 // disable the uart.
