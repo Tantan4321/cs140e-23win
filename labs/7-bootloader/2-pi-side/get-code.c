@@ -103,7 +103,7 @@ int get_code(uint32_t *code_addr) {
     if (received_crc != crc32((void *) addr, nbytes)) boot_err(BOOT_ERROR, "Checksum mismatch!\n");
 
     // 7. send back a BOOT_SUCCESS!
-    boot_putk("Eastan: success: Received the program!");
+    boot_putk("<UART> success: Received the program!");
 
     // woo!
     boot_put32(BOOT_SUCCESS);

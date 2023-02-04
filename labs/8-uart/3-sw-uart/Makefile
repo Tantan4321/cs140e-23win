@@ -10,7 +10,7 @@ PROGS = $(wildcard ./tests/output-test*.c)
 PROGS = hello.c
 
 #once your sw-uart works: add sw-uart-veneer.c
-# COMMON_SRC += sw-uart-veneer.c
+COMMON_SRC += sw-uart-veneer.c
 COMMON_SRC += sw-uart.c
 
 # can use the staff code to see that things work.
