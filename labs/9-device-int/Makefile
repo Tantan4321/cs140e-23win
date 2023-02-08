@@ -1,11 +1,4 @@
-# change these so you can do a "make test" and it verifies what you already
-# have in there.  (probably need a pi in there).   also you will need to 
-# do a better design.
-# ah: for test, doesn't work for us b/c we don't have the code...
-#
-# also it is tricky if they swap with our code and their code.
-SUBDIRS= 0-circular-example #1-gpio-int 2-logic-analyzer 3-vector-base 
-# 1-gpio-int 3-vector-base
+SUBDIRS= 0-circular-example 1-vector-base 2-gpio-int 3-handlers-gpio-int 4-logic-analyzer
 
 .PHONY: all check clean
 all check clean: $(SUBDIRS)
