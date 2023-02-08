@@ -20,7 +20,6 @@ extern volatile int n_interrupt;
 enum { out_pin = 21, in_pin = 20 };
 enum { N = 1024*32 };
 
-// TODO: you write these two routines.
 void falling_init(void);
 int falling_handler(uint32_t pc);
 
@@ -29,7 +28,6 @@ static inline void falling_int_startup(void) {
     test_startup(falling_init, falling_handler);
 }
 
-// TODO: you write these two routines.
 void rising_init(void);
 int rising_handler(uint32_t pc);
 
