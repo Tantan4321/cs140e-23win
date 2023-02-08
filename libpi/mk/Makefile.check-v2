@@ -74,6 +74,7 @@ all:: $(RUN_MK) # $(TEST_RUN) # $(TEST_CHECK)
 	@echo    "  about to emit new <$*.test>:"
 	@echo    "     $(BOOT_CMD) ./$< > $*.test"
 	@$(BOOT_CMD) ./$< 2>&1 > /dev/null | $(EXCLUDE) | sed $(STRIP_BRACKETS) | grep  $(GREP_STR) > $*.test
+	sleep 1
 	@echo -n "     new <$*.test> lines = "
 	@cat $*.test | wc -l 
 	@echo -n "     old ref <$*.out>: lines=";
