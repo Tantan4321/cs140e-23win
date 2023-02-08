@@ -12,15 +12,15 @@ MAKEFLAGS += --no-print-directory
 TEST_SRC := $(wildcard ./[1-5]-*.c) $(wildcard ./prog-*.c) 
 
 # easier: tell makefile to make the second batch of tests
-TEST_SRC := $(wildcard ./[2]-*.c)
+#TEST_SRC := $(wildcard ./[2]-*.c)
 # easiest: tell makefile to make the first batch of tests.
-TEST_SRC := $(wildcard ./[1]-*.c)
+#TEST_SRC := $(wildcard ./[1]-*.c)
 # just run one test.
-TEST_SRC += 0-uart-putc.c
 
-TEST_SRC = 0-uart-getc.c
-TEST_SRC += 0-uart-init.c
-TEST_SRC := $(wildcard ./0-*.c)
+TEST_SRC = 0-uart-putc.c
+#TEST_SRC = 0-uart-getc.c
+#TEST_SRC = 0-uart-init.c
+#TEST_SRC := $(wildcard ./0-*.c)
 
 # no other source code
 SRC = 
