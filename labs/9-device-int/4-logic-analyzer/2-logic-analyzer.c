@@ -11,6 +11,7 @@
 #include "cycle-count.h"
 
 static cq_t uartQ;
+static unsigned last_cycles = 0;
 
 enum { out_pin = 21, in_pin = 20 };
 static volatile unsigned n_rising_edge, n_falling_edge;
@@ -18,6 +19,7 @@ static volatile unsigned n_rising_edge, n_falling_edge;
 
 // client has to define this.
 void interrupt_vector(unsigned pc) {
+    if (last_cycles == 0) last_cycles = cycle_cnt_read();
     // 1. compute the cycles since the last event and push32 in the queue
     // 2. push the previous pin value in the circular queue (so if was
     //    falling edge: previous must have been a 1).
@@ -29,7 +31,18 @@ void interrupt_vector(unsigned pc) {
     unsigned s = cycle_cnt_read();
 
     dev_barrier();
-    unimplemented();
+    if (gpio_event_detected(in_pin)) {
+        cq_push32(&uartQ, s - last_cycles);
+        last_cycles = s;
+        if (gpio_read(in_pin) == 0) {
+            n_falling_edge++;
+            cq_push32(&uartQ, 1); // push old val
+        } else {
+            n_rising_edge++;
+            cq_push32(&uartQ, 0); // push old val
+        }
+        gpio_event_clear(in_pin);
+    }
     dev_barrier();
 }
 
