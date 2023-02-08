@@ -24,6 +24,29 @@ There are a ton of [EXTENSION](./EXTENSIONS.md).  We actually have a
 bunch that are not written, so ask if you want :).
 
 ------------------------------------------------------------------------
+### Housekeeping:
+
+The uart lab was pretty rough.  We've made a couple changes to hopefully
+make things more smooth:
+  1. Many people would hit the same hard bugs.  So, in the future:  If 
+     you hit anything interesting write it up and post Ed.  This will
+     count towards your extension credit especially if it helps a bunch
+     of people.  It also gives us a good record of what kind of traps
+     nailed people.
+
+  2. To make things easy for switching we will always include a `libpi.a`
+     in each lab: this will make it easy to flip back and forth from your
+     libpi to a (hopefully) working staff version rather than messing
+     around in your `libpi` directory.
+
+     Whenever you hit an "impossible error" I would always recommend
+     flipping back to a clean state and seeing if it is still there.  If
+     so there's likely some issue with your environment (your pi, your  
+     laptop, the USB cable, etc).
+
+   3. If you have any further suggestions, let us know!
+
+------------------------------------------------------------------------
 ### Part 1: use the vector register: `1-vector-base`
 
 For this you'll do some simple tricks to speed up your interrupt
@@ -60,7 +83,7 @@ to compare yours to ours / your partners and see that everyone
 has the same thing.
 
 Notes:
-  1. I checked pins were <= 32.   I did this before issuing a `dev_barrier`.
+  1. I rejected pins that were >= 32.   I did this before issuing a `dev_barrier`.
   2. I enabled the GPIO address before the Broadcom interrupt controller.
   3. The interrupt controller is a different device from GPIO so we need
      dev barriers between them.
@@ -86,6 +109,7 @@ provide it.)
 
 ***NOTE: before you start attach a jumper from pin 20 to pin 21 (i.e.,
 have a loopback setup) so that the tests work.***
+
 
 You'll  now write the handlers that use your `gpio-int.c` implementation.
 
