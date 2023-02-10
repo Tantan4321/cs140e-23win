@@ -16,17 +16,18 @@ BOOTLOADER = my-install
 # uncomment if you want it to automatically run.
 RUN=1
 
-# part 1
-PROGS := $(wildcard ./2-*.c)
+#PROGS := $(wildcard ./3-*.c)
+#PROGS := $(wildcard ./2-*.c)
 #PROGS := $(wildcard ./1-*.c)
 #PROGS := $(wildcard ./0-*.c)
 
 COMMON_SRC += interrupt-asm.S
+COMMON_SRC += debug-fault.c
 
 CFLAGS += -Wno-unused-function -Wno-unused-variable 
 
 # to run all the tests.
-# TEST_SRC := $(wildcard ./[0-9]*.c)
+PROGS := $(wildcard ./[1-9]*.c)
 
 # should not have to change below
 
@@ -37,6 +38,8 @@ GREP_STR := 'TRACE:\|THREAD:\|ERROR:\|PANIC:'
 include $(CS140E_2023_PATH)/libpi/mk/Makefile.template
 
 # override the default rules.  should have a cleaner solution
+3-byte-test.elf:  3-debug-byte-access.o interrupt-asm.o $(START) $(LIBS)
+	$(LD) $(START)  $< interrupt-asm.o -T $(MEMMAP) -o $@  $(LIBS)
 2-brkpt-test.elf:  2-brkpt-test.o interrupt-asm.o $(START) $(LIBS)
 	$(LD) $(START)  $< interrupt-asm.o -T $(MEMMAP) -o $@  $(LIBS)
 1-watchpt-test.elf:  1-watchpt-test.o interrupt-asm.o $(DEPS) $(START) $(LIBS)

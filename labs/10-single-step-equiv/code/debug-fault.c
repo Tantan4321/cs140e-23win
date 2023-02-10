@@ -37,9 +37,13 @@ void data_abort_vector(unsigned lr) {
     watchpt_handler(addr, pc, 0); 
 }
 
+extern uint32_t interrupt_vec;
+
+
 // setup handlers: enable cp14
 void debug_fault_init(void) {
-    unimplemented();
+    vector_base_set((void *)&interrupt_vec);
+    cp14_enable();
 
     // just started, should not be enabled.
     assert(!cp14_bcr0_is_enabled());
@@ -48,7 +52,26 @@ void debug_fault_init(void) {
 
 // set a breakpoint on <addr>: call <h> when triggers.
 void brkpt_set0(uint32_t addr, bfault_handler_t h) {
-    unimplemented();
+    cp14_bcr0_disable();
+    prefetch_flush();
+
+    // just started, should not be enabled.
+    assert(!cp14_bcr0_is_enabled());
+
+    cp14_bvr0_set(addr);
+    prefetch_flush();
+
+    uint32_t b = cp14_bcr0_get();
+    b = bits_clr(b, 21, 22);
+    b = bit_clr(b, 20);
+//    Watchpoints both in secure and non-secure
+    b = bits_set(b, 14, 15, 0b00);
+//    Byte address select for all accesses (0x0, 0x1, 0x2, 0x3).
+    b = bits_set(b, 5, 8, 0b1111);
+    b = bits_set(b, 0, 2, 0b111);
+
+    cp14_bcr0_set(b);
+    prefetch_flush();
 
     assert(cp14_bcr0_is_enabled());
     brkpt_handler = h;
@@ -56,7 +79,27 @@ void brkpt_set0(uint32_t addr, bfault_handler_t h) {
 
 // set a watchpoint on <addr>: call handler <h> when triggers.
 void watchpt_set0(uint32_t addr, wfault_handler_t h) {
-    unimplemented();
+    //clear WCR[0] enable watchpoint bit in the read word and write it back to the WCR
+    cp14_wcr0_disable();
+    prefetch_flush();
+
+    // just started, should not be enabled.
+    assert(!cp14_wcr0_is_enabled());
+
+    // now watchpoint is disabled, write DMVA to the WVR
+    cp14_wvr0_set(addr);  // 4 bit aligned, bottom 2 bits of WVR can get blasted
+    prefetch_flush();
+
+    uint32_t b = cp14_wcr0_get();
+    b = bit_clr(b, 20);
+//    Watchpoints both in secure and non-secure
+    b = bits_set(b, 14, 15, 0b00);
+//    Byte address select for all accesses (0x0, 0x1, 0x2, 0x3).
+    b = bits_set(b, 5, 8, 0b1111);
+    b = bits_set(b, 0, 4, 0b11111);
+
+    cp14_wcr0_set(b);
+    prefetch_flush();
 
 
     assert(cp14_wcr0_is_enabled());

@@ -9,13 +9,15 @@ coproc_mk(status, p14, 0, c0, c1, 0)
 coproc_mk(dscr, p14, 0, c0, c1, 0)
 coproc_mk(dfsr, p15, 0, c5, c0, 0)
 coproc_mk(wcr0, p14, 0, c0, c0, 7)
-coproc_mk(wvr0, p14, 0 ,c0 ,c0, 6)
+coproc_mk(wvr0, p14, 0, c0 ,c0, 6)
 coproc_mk(ifsr, p15, 0, c5, c0, 1)
-coproc_mk(ifar, p15, 0, c6, c0, 0)
+coproc_mk(ifar, p15, 0, c6, c0, 2)
 coproc_mk(wfar, p14, 0, c0, c6, 0)
 
 coproc_mk(bcr0, p14, 0, c0, c0, 5)
 coproc_mk(bvr0, p14, 0, c0, c0, 4)
+
+coproc_mk(far, p15, 0, c6, c0, 0)
 
 // you'll need to define these and a bunch of other routines.
 static inline uint32_t cp15_dfsr_get(void);
@@ -42,7 +44,6 @@ static inline void cp14_enable(void) {
     // for the core to take a debug exception, monitor debug mode has to be both 
     // selected and enabled --- bit 14 clear and bit 15 set.
     cp14_dscr_set(bits_set(cp14_dscr_get(), 14, 15, 0b10));
-
     prefetch_flush();
 
     assert(cp14_is_enabled());
@@ -118,6 +119,11 @@ static inline void cp14_wcr0_disable(void) {
 // Get watchpoint fault using WFAR
 static inline uint32_t watchpt_fault_pc(void) {
     return (cp14_wfar_get() - 0x8);
+}
+
+// Get watchpoint fault addr using FAR
+static inline uint32_t watchpt_fault_addr(void) {
+    return (cp15_far_get());
 }
     
 #endif
