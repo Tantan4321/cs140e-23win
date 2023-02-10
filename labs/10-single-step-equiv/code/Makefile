@@ -18,8 +18,10 @@ RUN=1
 
 # part 1
 PROGS := $(wildcard ./2-*.c)
-PROGS := $(wildcard ./1-*.c)
-PROGS := $(wildcard ./0-*.c)
+#PROGS := $(wildcard ./1-*.c)
+#PROGS := $(wildcard ./0-*.c)
+
+COMMON_SRC += interrupt-asm.S
 
 CFLAGS += -Wno-unused-function -Wno-unused-variable 
 
@@ -35,10 +37,10 @@ GREP_STR := 'TRACE:\|THREAD:\|ERROR:\|PANIC:'
 include $(CS140E_2023_PATH)/libpi/mk/Makefile.template
 
 # override the default rules.  should have a cleaner solution
-2-brkpt-test.elf:  2-brkpt-test.o $(DEPS) $(START) $(LIBS)
-	$(LD) $(START)  $< -T $(MEMMAP) -o $@  $(LIBS)
-1-watchpt-test.elf:  1-watchpt-test.o $(DEPS) $(START) $(LIBS)
-	$(LD) $(START)  $< -T $(MEMMAP) -o $@  $(LIBS)
+2-brkpt-test.elf:  2-brkpt-test.o interrupt-asm.o $(START) $(LIBS)
+	$(LD) $(START)  $< interrupt-asm.o -T $(MEMMAP) -o $@  $(LIBS)
+1-watchpt-test.elf:  1-watchpt-test.o interrupt-asm.o $(DEPS) $(START) $(LIBS)
+	$(LD) $(START)  $< interrupt-asm.o -T $(MEMMAP) -o $@  $(LIBS)
 
 
 clean::

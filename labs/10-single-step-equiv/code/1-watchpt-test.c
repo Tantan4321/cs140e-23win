@@ -29,12 +29,14 @@ void data_abort_vector(unsigned lr) {
     cp14_wcr0_disable();
 }
 
+extern uint32_t interrupt_vec;
+
 void notmain(void) {
 
     // 1. install exception handlers using vector base.
     //      must have an entry for data-aborts that has
     //      a valid trampoline to call <data_abort_vector>
-    unimplemented();
+    vector_base_set((void *)&interrupt_vec);
 
     // 2. enable the debug coprocessor.
     cp14_enable();
@@ -46,14 +48,34 @@ void notmain(void) {
      */
     enum { null = 0 };
 
+    //clear WCR[0] enable watchpoint bit in the read word and write it back to the WCR
+    cp14_wcr0_disable();
+    prefetch_flush();
+
     // just started, should not be enabled.
     assert(!cp14_wcr0_is_enabled());
 
-    // setup watchpoint 0.  needs two registers.
-    //  - see 13-17 for how to set bits in the <wcr0>
 
-    uint32_t b = 0;  // set this to the needed bits in wcr0
-    unimplemented();
+    // now watchpoint is disabled, write DMVA to the WVR
+    cp14_wvr0_set(null);  // 4 bit aligned, bottom 2 bits of WVR can get blasted
+    prefetch_flush();
+
+
+    uint32_t b = cp14_wcr0_get();
+//    4.Write to the WCR with its fields set as follows:
+//      WCR[20] enable linking bit cleared, to indicate that this watchpoint is not to be linked
+    b = bit_clr(b, 20);
+//    Watchpoints both in secure and non-secure
+    b = bits_set(b, 14, 15, 0b00);
+//    Byte address select for all accesses (0x0, 0x1, 0x2, 0x3).
+    b = bits_set(b, 5, 8, 0b1111);
+//    For both loads and stores.
+//    Both priviledged and user.
+//    WCR[0] enable watchpoint bit set.
+    b = bits_set(b, 0, 4, 0b11111);
+
+    cp14_wcr0_set(b);
+    prefetch_flush();
 
     assert(cp14_wcr0_is_enabled());
     trace("set watchpoint for addr %p\n", null);
@@ -66,6 +88,7 @@ void notmain(void) {
 
     assert(!cp14_wcr0_is_enabled());
     cp14_wcr0_set(b);
+    prefetch_flush();
     assert(cp14_wcr0_is_enabled());
 
     trace("should see a load fault!\n");

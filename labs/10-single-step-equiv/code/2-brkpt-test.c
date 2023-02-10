@@ -53,18 +53,21 @@ void prefetch_abort_vector(unsigned lr) {
     assert(!cp14_bcr0_is_enabled());
 }
 
+extern uint32_t interrupt_vec;
 
 void notmain(void) {
     // 1. install exception handlers: must have a valid trampoline for
     // prefetch_abort_vector
-    unimplemented();
+    vector_base_set((void *)&interrupt_vec);
 
     // 2. enable the debug coprocessor.
     cp14_enable();
 
+    cp14_bcr0_disable();
+    prefetch_flush();
+
     // just started, should not be enabled.
     assert(!cp14_bcr0_is_enabled());
-
 
     /*
       3. set a simple breakpoint.  from 13-45:
@@ -80,6 +83,22 @@ void notmain(void) {
         prefetch flush.
     */
 
+    cp14_bvr0_set((uint32_t)foo);
+    prefetch_flush();
+
+    uint32_t b = cp14_bcr0_get();
+    b = bits_clr(b, 21, 22);
+    b = bit_clr(b, 20);
+//    Watchpoints both in secure and non-secure
+    b = bits_set(b, 14, 15, 0b00);
+//    Byte address select for all accesses (0x0, 0x1, 0x2, 0x3).
+    b = bits_set(b, 5, 8, 0b1111);
+    b = bits_set(b, 0, 2, 0b111);
+
+    cp14_bcr0_set(b);
+    prefetch_flush();
+
+
     /* 
      * see 13-17 for how to set bits
      * set:
@@ -90,11 +109,10 @@ void notmain(void) {
      *   - supervisor or not
      *   - enabled.
      */
-    uint32_t b = 0;
+
 
 
     // set breakpoint using bcr0 and bvr0
-    unimplemented();
 
     assert(cp14_bcr0_is_enabled());
     output("set breakpoint for addr %p\n", foo);
@@ -108,6 +126,7 @@ void notmain(void) {
     trace("worked!  fill do %d repeats\n", n);
     for(int i = n_faults = 0; i < n; i++) {
         cp14_bcr0_enable();
+        prefetch_flush();
         assert(cp14_bcr0_is_enabled());
 
         trace("should see a breakpoint fault!\n");
