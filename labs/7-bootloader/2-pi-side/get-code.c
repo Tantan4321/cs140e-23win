@@ -41,6 +41,7 @@ has_data_timeout(unsigned timeout) {
 //      Its from this loop (since the LED goes on for each 
 //      received packet)
 static void wait_for_data(unsigned usec_timeout) {
+    boot_put32(GET_PROG_INFO);
     while (has_data_timeout(usec_timeout) == 0) {
         boot_put32(GET_PROG_INFO);
     }
@@ -93,8 +94,7 @@ int get_code(uint32_t *code_addr) {
     op = boot_get32();
     if (op != PUT_CODE) boot_err(BOOT_ERROR, "Did not receive PUT_CODE from UNIX.\n");
     for (int i = 0; i < nbytes; i++) {
-        int byte = uart_get8();
-        PUT8((addr) + i, byte);
+        PUT8((addr) + i, (uart_get8() & 0xFF));
     }
 
     // 6. verify the cksum of the copied code using:
