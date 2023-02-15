@@ -1,6 +1,7 @@
 #ifndef __BREAKPOINT_H__
 #define __BREAKPOINT_H__
 
+#include "rpi.h"
 
 // disable mismatch
 void brkpt_mismatch_stop(void);

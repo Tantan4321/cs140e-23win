@@ -55,7 +55,8 @@ void single_step_full(uint32_t regs[17]) {
         panic("pc=%x: is not a breakpoint fault??\n", pc);
 
     proc_t *p = curproc_get();
-    todo("compute reg hash and instructions.\n");
+    p->reg_hash = fast_hash_inc32(regs, 17*sizeof regs[0], p->reg_hash);
+    p->inst_cnt++;
 
     if(verbose_p)  {
         output("------------------------------------------------\n");
@@ -91,9 +92,9 @@ void notmain(void) {
     output("about to check that swi test works\n");
     enum { N = 10 };
     for(int i = 0; i < N; i++) {
-        //proc_fork_nostack(mov_ident, 0xcd6e5626);
-        //proc_fork_nostack(nop_1, 0xbfde46be);
-        proc_fork_stack(hello, 0);
+        proc_fork_nostack(mov_ident, 0xcd6e5626);
+        proc_fork_nostack(nop_1, 0xbfde46be);
+//        proc_fork_stack(hello, 0);
     }
     proc_run_one();
 }

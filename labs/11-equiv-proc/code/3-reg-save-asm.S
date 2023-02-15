@@ -1,6 +1,6 @@
 #include "regs-save-restore.h"
 
-#if 0
+#if 1
 #define TRAMPOLINE_FULL_REGS(fn)    \
   sub sp, sp, #68;                          \
   stm sp, {r0-r14}^;                        \
