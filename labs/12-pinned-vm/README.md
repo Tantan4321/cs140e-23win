@@ -211,6 +211,7 @@ The tests for this:
 If you want, you can ignore our starter code and write all that from scratch.
 If you want to use our stuff, there's a few helpers you implement.
 
+
 ----------------------------------------------------------------------
 ## Part 2: implement `pinned-vm.c:pin_mmu_on(procmap_t *p)` 
 
@@ -222,7 +223,51 @@ tests.
 Note that you'll have to handle the domains in the domain control register.
 
 ----------------------------------------------------------------------
-## Part 3: handle a couple exceptions
+## Part 3: implement `pinned-vm.c:lockdown_print_entries`
+
+
+Mine is something like:
+
+
+        void lockdown_print_entry(unsigned idx) {
+            trace("   idx=%d\n", idx);
+            lockdown_index_set(idx);
+            uint32_t va_ent = lockdown_va_get();
+            uint32_t pa_ent = lockdown_pa_get();
+            unsigned v = bit_get(pa_ent, 0);
+        
+            if(!v) {
+                trace("     [invalid entry %d]\n", idx);
+                return;
+            }
+        
+            // 3-149
+            ...fill in the needed vars...
+            trace("     va_ent=%x: va=%x|G=%d|ASID=%d\n",
+                va_ent, va, G, asid);
+        
+            // 3-150
+            ...fill in the needed vars...
+            trace("     pa_ent=%x: pa=%x|nsa=%d|nstid=%d|size=%b|apx=%b|v=%d\n",
+                        pa_ent, pa, nsa,nstid,size, apx,v);
+        
+            // 3-151
+            ...fill in the needed vars...
+            trace("     attr=%x: dom=%d|xn=%d|tex=%b|C=%d|B=%d\n",
+                    attr, dom,xn,tex,C,B);
+        }
+        
+        void lockdown_print_entries(const char *msg) {
+            trace("-----  <%s> ----- \n", msg);
+            trace("  pinned TLB lockdown entries:\n");
+            for(int i = 0; i < 8; i++)
+                lockdown_print_entry(i);
+            trace("----- ---------------------------------- \n");
+        }
+
+
+----------------------------------------------------------------------
+## Part 4: handle a couple exceptions
 
 For this part you'll write all the code.  
 
@@ -236,11 +281,30 @@ A domain fault.  Write a single test that:
      for `bx lr` to a heap location and jump to it.
 
 
+Useful domain pages:
+  - B4-10: what the bit values mean for the `domain` field.
+  - B4-15: how addresses are translated and checked for faults.
+  - B4-27: the location / size of the `domain` field in the segment page table entry.
+  - B4-42: setting the domain register.
+
+
 A invalid access fault:
   1. Write tests that 
      do load, store, and jump to an unmapped addresss and extend the
      data abort and prefetch abort handlers above to print out the 
      reason and faulting address.
+
+
+NOTE: if you delete `staff-mmu-except.o` and your `panic` or `reboot`
+locks up, add this code to your pinned-vm.c`:
+
+        // this is called by reboot: we turn off mmu so that things work.
+        void reboot_callout(void) {
+            if(mmu_is_enabled())
+                staff_mmu_disable();
+        }
+
+which will let `reboot` / `panic` reboot without hanging.
      
 ----------------------------------------------------------------------
 ## Extension:
