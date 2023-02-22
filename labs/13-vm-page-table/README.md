@@ -134,6 +134,23 @@ Testing:
 ----------------------------------------------------------------------
 ## Part 2: finish implementing  `mmu.c`.
 
+***NOTE: the initial readme left out the following***:
+
+  - add the following to `mmu.c`:
+
+        void domain_access_ctrl_set(uint32_t r) {
+            staff_cp15_domain_ctrl_wr(r);
+        }
+
+  - delete the staff calls in `vm-ident.c`
+
+  - also implement `domain_access_ctrl_get` (see: b4-42), which
+    you should be able to steal from last lab:
+
+        uint32_t domain_access_ctrl_get(void) {
+
+
+
 Go through and start implementing your own versions of the MMU routines.
 You'll write the code to fill in the page table assuming the use of
 1MB sections.
@@ -149,6 +166,8 @@ You'll write the code to fill in the page table assuming the use of
 
   - You'll do the other calls on thursday --- these
     require following some rules that we don't want to get into here.
+
+
 
 The document you'll need for this part is:
   - The annotated B4 of the ARM manual `docs/armv6.b4-mmu.annot.pdf`,
@@ -272,14 +291,14 @@ This test:
 For this part you'll write your own test case.  
 
   1. Create a page table with a single additional segment after the current heap
-     (so at 0x200000) that is not marked as a non-global entry.
+     (so at 0x200000) that is marked as a non-global entry.
 
   2. Write a routine to duplicate a page table, cloning any non-global entry (it
      should clone the single page from step 1).
 
   3. Write the test to switch between two different ASIDs, showing that the 
      writes in one do not go to the other for non-shared data, but do go
-     for shared.
+     for shared. This will not be an identity map.
 
 ----------------------------------------------------------------------
 ## Extension: die with informative error messages.
