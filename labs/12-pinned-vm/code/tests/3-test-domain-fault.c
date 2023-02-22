@@ -68,7 +68,10 @@ void notmain(void) {
 
     domain_access_ctrl_set((DOM_client << (dom_kern*2)) | (DOM_no_access << (dom_user*2)));
 //    PUT32(user_addr, 0xe12fff1e);
-    asm volatile("mov lr, %0": : "r" ((void *)user_addr));
+
+    void (*fun_ptr)() = (void *)user_addr;
+    (*fun_ptr)();
+//    asm volatile("mov lr, %0": : "r" ((void *)user_addr));
 //    asm volatile("bx lr");
 
     staff_mmu_disable();
