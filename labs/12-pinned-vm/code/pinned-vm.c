@@ -20,9 +20,59 @@
 //   2. return 1 if entry exists, 0 otherwise.
 int tlb_contains_va(uint32_t *result, uint32_t va) {
     // 3-79
-    assert(bits_get(va, 0,2) == 0);
-    return staff_tlb_contains_va(result, va);
+    assert(bits_get(va, 0, 2) == 0);
+    xlate_kern_wr_set(va);
+    *result = bits_get(va, 0, 9) | bits_get(xlate_pa_get(), 10, 31) << 10;
+    return bit_is_off(xlate_pa_get(), 0);
 }
+
+void lockdown_print_entry(unsigned idx) {
+    trace("   idx=%d\n", idx);
+    lockdown_index_set(idx);
+    uint32_t va_ent = lockdown_va_get();
+    uint32_t pa_ent = lockdown_pa_get();
+    uint32_t attr = lockdown_attr_get();
+    unsigned v = bit_get(pa_ent, 0);
+
+    if(!v) {
+        trace("     [invalid entry %d]\n", idx);
+        return;
+    }
+
+    // 3-149
+    uint32_t va = bits_get(va_ent, 12, 31);
+    uint32_t G = bit_isset(va_ent, 9);
+    uint32_t asid = bits_get(va_ent, 0, 7);
+    trace("     va_ent=%x: va=%x|G=%d|ASID=%d\n",
+          va_ent, va, G, asid);
+
+    // 3-150
+    uint32_t pa = bits_get(pa_ent, 12, 31);
+    uint32_t size = bits_get(pa_ent, 6, 7);
+    uint32_t apx = bits_get(pa_ent, 1, 3);
+    uint32_t nsa = bit_isset(pa_ent, 9);
+    uint32_t nstid = bit_isset(pa_ent, 8);
+    trace("     pa_ent=%x: pa=%x|nsa=%d|nstid=%d|size=%b|apx=%b|v=%d\n",
+          pa_ent, pa, nsa,nstid,size, apx,v);
+
+    // 3-151
+    uint32_t dom = bits_get(attr, 7, 10);
+    uint32_t xn = bit_isset(attr, 6);
+    uint32_t tex = bits_get(attr, 3, 5);
+    uint32_t C = bit_isset(attr, 2);
+    uint32_t B = bit_isset(attr, 1);
+    trace("     attr=%x: dom=%d|xn=%d|tex=%b|C=%d|B=%d\n",
+          attr, dom,xn,tex,C,B);
+}
+
+void lockdown_print_entries(const char *msg) {
+    trace("-----  <%s> ----- \n", msg);
+    trace("  pinned TLB lockdown entries:\n");
+    for(int i = 0; i < 8; i++)
+        lockdown_print_entry(i);
+    trace("----- ---------------------------------- \n");
+}
+
 
 // map <va>-><pa> at TLB index <idx> with attributes <e>
 void pin_mmu_sec(unsigned idx,  
@@ -30,17 +80,17 @@ void pin_mmu_sec(unsigned idx,
                 uint32_t pa,
                 pin_t e) {
 
-    staff_pin_mmu_sec(idx, va, pa, e);
-    return;
+//    staff_pin_mmu_sec(idx, va, pa, e);
+//    return;
 
     demand(idx < 8, lockdown index too large);
     // lower 20 bits should be 0.
     demand(bits_get(va, 0, 19) == 0, only handling 1MB sections);
     demand(bits_get(pa, 0, 19) == 0, only handling 1MB sections);
 
-    if(va != pa)
-        panic("for today's lab, va (%x) should equal pa (%x)\n",
-                va,pa);
+//    if(va != pa)
+//        panic("for today's lab, va (%x) should equal pa (%x)\n",
+//                va,pa);
 
     debug("about to map %x->%x\n", va,pa);
 
@@ -49,7 +99,30 @@ void pin_mmu_sec(unsigned idx,
     uint32_t x, va_ent, pa_ent, attr;
 
     // put your code here.
-    unimplemented();
+    x = idx;
+    lockdown_index_set(x);
+
+    va_ent = 0;
+    va_ent = bits_set(va_ent, 12, 31, (va >> 12));
+    va_ent = bits_set(va_ent, 9, 9, e.G);
+    va_ent = bits_set(va_ent, 0, 7, e.asid);
+    lockdown_va_set(va_ent);
+
+    attr = 0;
+    attr = bits_set(attr, 7, 10, e.dom);
+    attr = bits_set(attr, 1, 5, e.mem_attr);
+    attr = bit_clr(attr, 6);
+    attr = bit_clr(attr, 0);
+    lockdown_attr_set(attr);
+
+    pa_ent = 0;
+    pa_ent = bits_set(pa_ent, 12, 31, (pa >> 12));
+    pa_ent = bits_set(pa_ent, 6, 7, e.pagesize);
+    pa_ent = bits_set(pa_ent, 1, 3, e.AP_perm);
+    pa_ent = bits_clr(pa_ent, 8, 9);
+    pa_ent = bit_set(pa_ent, 0);
+    lockdown_pa_set(pa_ent);
+
 
     if((x = lockdown_va_get()) != va_ent)
         panic("lockdown va: expected %x, have %x\n", va_ent,x);
@@ -85,12 +158,11 @@ void pin_procmap(procmap_t *p) {
         case MEM_DEVICE:
                 pin_mmu_sec(i, e->addr, e->addr, pin_mk_device(e->dom));
                 break;
-        case MEM_RW:
-        {
-                // currently everything is uncached.
-                pin_t g = pin_mk_global(e->dom, perm_rw_priv, MEM_uncached);
-                pin_mmu_sec(i, e->addr, e->addr, g);
-                break;
+        case MEM_RW: {
+            // currently everything is uncached.
+            pin_t g = pin_mk_global(e->dom, perm_rw_priv, MEM_uncached);
+            pin_mmu_sec(i, e->addr, e->addr, g);
+            break;
         }
         case MEM_RO: panic("not handling\n");
         default: panic("unknown type: %d\n", e->type);
@@ -101,6 +173,8 @@ void pin_procmap(procmap_t *p) {
 void domain_access_ctrl_set(uint32_t d) {
     staff_domain_access_ctrl_set(d);
 }
+
+extern uint32_t interrupt_vec;
 
 // turn the pinned MMU system on.
 //    1. initialize the MMU (maybe not actually needed): clear TLB, caches
@@ -115,8 +189,8 @@ void domain_access_ctrl_set(uint32_t d) {
 //       it off.
 //    6. profit!
 void pin_mmu_on(procmap_t *p) {
-    staff_pin_mmu_on(p);
-    return;
+//    staff_pin_mmu_on(p);
+//    return;
 
     assert(!mmu_is_enabled());
 
@@ -124,12 +198,16 @@ void pin_mmu_on(procmap_t *p) {
     staff_mmu_init();
     pin_procmap(p);
 
-    void *null_pt = 0;
+    void *null_pt = kmalloc_aligned(4096*4, 1<<14);
+    assert((uint32_t)null_pt % (1<<14) == 0);
 
-    todo("fill in the rest from the 1-test* code");
+    uint32_t d = 0;
+    for (int i = 0; i < p->n; i++) {
+        d = d | (DOM_client << (p->map[i].dom*2));
+    }
+    domain_access_ctrl_set(d);
 
-
-
+    vector_base_set((void *)&interrupt_vec);
 
     staff_mmu_on_first_time(1, null_pt);
     assert(mmu_is_enabled());
