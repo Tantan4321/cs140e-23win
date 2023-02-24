@@ -114,7 +114,7 @@ void cp15_ttbr_ctrl_wr(uint32_t N);
 
 // must set both at once, AFAIK or hardware state too iffy.
 struct first_level_descriptor;
-// void cp15_set_procid_ttbr0(uint32_t procid, struct first_level_descriptor *pt);
+//void cp15_set_procid_ttbr0(uint32_t procid, struct first_level_descriptor *pt);
 
 uint32_t cp15_procid_rd(void);
 
@@ -156,8 +156,8 @@ void cp15_btb_flush(void);
 void cp15_prefetch_flush(void);
 
 // assembly code: handles all the mmu disable/enable stuff.
-void mmu_disable_set_asm(cp15_ctrl_reg1_t c);
-void mmu_enable_set_asm(cp15_ctrl_reg1_t c);
+//void mmu_disable_set_asm(cp15_ctrl_reg1_t c);
+//void mmu_enable_set_asm(cp15_ctrl_reg1_t c);
 
 void mmu_get_curpid(unsigned *pid, unsigned *asid);
 void mmu_asid_print(void);

@@ -13,13 +13,13 @@ void data_abort_vector(unsigned lr) {
     unsigned fault_addr;
     // b4-44
     asm volatile("MRC p15, 0, %0, c6, c0, 0" : "=r" (fault_addr));
-    staff_mmu_disable();
+    mmu_disable();
     panic("data_abort fault at %x\n", fault_addr);
 }
 
 // shouldn't happen: need to fix libpi so we don't have to do this.
 void interrupt_vector(unsigned lr) {
-    staff_mmu_disable();
+    mmu_disable();
     panic("impossible\n");
 }
 #endif

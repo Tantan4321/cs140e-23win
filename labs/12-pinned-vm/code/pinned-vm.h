@@ -68,16 +68,16 @@ static inline int mem_perm_islegal(mem_perm_t p) {
 }
 
 
-// domain permisson enums: see b4-10
-enum {
-    DOM_no_access   = 0b00, // any access = fault.
-    // client accesses check against permission bits in tlb
-    DOM_client      = 0b01,
-    // don't use.
-    DOM_reserved    = 0b10,
-    // TLB access bits are ignored.
-    DOM_manager     = 0b11,
-};
+//// domain permisson enums: see b4-10
+//enum {
+//    DOM_no_access   = 0b00, // any access = fault.
+//    // client accesses check against permission bits in tlb
+//    DOM_client      = 0b01,
+//    // don't use.
+//    DOM_reserved    = 0b10,
+//    // TLB access bits are ignored.
+//    DOM_manager     = 0b11,
+//};
 
 
 // caching is controlled by the TEX, C, and B bits.

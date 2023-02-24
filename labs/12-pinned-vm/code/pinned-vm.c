@@ -170,8 +170,11 @@ void pin_procmap(procmap_t *p) {
     }
 }
 
-void domain_access_ctrl_set(uint32_t d) {
-    staff_domain_access_ctrl_set(d);
+void mmu_on_first_time(uint32_t asid, void *empty_pt){
+    mmu_init();
+    cp15_set_procid_ttbr0(asid, (fld_t *)empty_pt);
+    mmu_enable_set_asm(cp15_ctrl_reg1_rd());
+    mmu_enable();
 }
 
 extern uint32_t interrupt_vec;
@@ -195,7 +198,7 @@ void pin_mmu_on(procmap_t *p) {
     assert(!mmu_is_enabled());
 
     // we have to clear the MMU before setting any entries.
-    staff_mmu_init();
+    mmu_init();
     pin_procmap(p);
 
     void *null_pt = kmalloc_aligned(4096*4, 1<<14);
@@ -209,7 +212,7 @@ void pin_mmu_on(procmap_t *p) {
 
     vector_base_set((void *)&interrupt_vec);
 
-    staff_mmu_on_first_time(1, null_pt);
+    mmu_on_first_time(1, null_pt);
     assert(mmu_is_enabled());
     pin_debug("enabled!\n");
 

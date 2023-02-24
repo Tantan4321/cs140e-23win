@@ -36,5 +36,5 @@ void data_abort_vector(unsigned lr) {
     } else {
         clean_reboot();
     }
-    staff_mmu_sync_pte_mods();
+    mmu_sync_pte_mods();
 }

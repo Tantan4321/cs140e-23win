@@ -74,7 +74,7 @@ void notmain(void) {
 //    asm volatile("mov lr, %0": : "r" ((void *)user_addr));
 //    asm volatile("bx lr");
 
-    staff_mmu_disable();
+    mmu_disable();
     assert(!mmu_is_enabled());
     trace("MMU is off!\n");
 

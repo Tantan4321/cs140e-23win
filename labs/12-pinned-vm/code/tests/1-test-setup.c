@@ -13,7 +13,7 @@ void notmain(void) {
     assert((uint32_t)null_pt % (1<<14) == 0);
 
     // initialize everything, after bootup.
-    staff_mmu_init();
+    mmu_init();
 
            // domain for kernel=1
     enum { dom_kern = 1,
@@ -62,10 +62,10 @@ void notmain(void) {
     trace("about to enable\n");
 
     // b4-42
-    staff_domain_access_ctrl_set(~0); 
+    domain_access_ctrl_set(~0);
 
     lockdown_print_entries("about to turn on first time");
-    staff_mmu_on_first_time(1, null_pt);
+    mmu_on_first_time(1, null_pt);
 
     assert(mmu_is_enabled());
     trace("MMU is on and working!\n");
@@ -75,7 +75,7 @@ void notmain(void) {
     assert(x == 0xdeadbeef);
     PUT32(user_addr, 1);
 
-    staff_mmu_disable();
+    mmu_disable();
     assert(!mmu_is_enabled());
     trace("MMU is off!\n");
     trace("phys addr1=%x\n", GET32(phys_addr1));
