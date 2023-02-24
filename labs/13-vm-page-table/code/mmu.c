@@ -2,6 +2,7 @@
 #include "rpi-constants.h"
 #include "rpi-interrupts.h"
 #include "libc/helper-macros.h"
+#include "libc/bit-support.h"
 #include "mmu.h"
 
 /***********************************************************************
@@ -104,8 +105,10 @@ void mmu_map_sections(fld_t *pt, unsigned va, unsigned pa, unsigned nsec, uint32
     assert(mod_pow2(va, 20));
     assert(mod_pow2(pa, 20));
 
-    // implement
-    staff_mmu_map_sections(pt, va, pa, nsec,dom);
+    fld_t *pte = pt +  (va >> 20);
+    for (int i = 0; i < nsec; i++) {
+        mmu_map_section(pte + i, va + i*OneMB, pa + i*OneMB, dom);
+    }
 }
 
 // lookup va in pt and return the pte entry.
@@ -113,8 +116,9 @@ fld_t * mmu_lookup_section(fld_t *pt, unsigned va) {
     assert(mod_pow2(va, 20));
     fld_t *pte = 0;
 
-    // implement
-    pte = staff_mmu_lookup_section(pt,va);
+    pte = pt + (va >> 20);
+
+    // pte = staff_mmu_lookup_section(pt,va);
 
     // for today: tag should be set.  in the future you'd return 0.
     demand(pte->tag, invalid section);
@@ -125,8 +129,12 @@ fld_t * mmu_lookup_section(fld_t *pt, unsigned va) {
 void mmu_mprotect(fld_t *pt, unsigned va, unsigned nsec, unsigned perm) {
     demand(perm <= 0b11, invalid permission);
 
-    // you need to implement this.
-    staff_mmu_mprotect(pt,va,nsec, perm);
+    fld_t *pte = pt +  (va >> 20);
+    for (int i = 0; i < nsec; i++) {
+        pte[i].AP = perm;
+    }
+
+//    staff_mmu_mprotect(pt,va,nsec, perm);
 
     // must call this routine on each PTE modification (you'll implement
     // next lab).
@@ -145,10 +153,12 @@ void mmu_init(void) {
 
     // trivial: RMW the xp bit in control reg 1.
     // leave mmu disabled.
-    todo("read control reg 1, turn on XP bit (non-back compat)");
+    struct control_reg1 c1 = cp15_ctrl_reg1_rd();
+    c1.XP_pt = 1;
+    cp15_ctrl_reg1_wr(c1);
 
     // make sure write succeeded.
-    struct control_reg1 c1 = cp15_ctrl_reg1_rd();
+    c1 = cp15_ctrl_reg1_rd();
     assert(c1.XP_pt);
     assert(!c1.MMU_enabled);
 }
@@ -159,7 +169,7 @@ static void fld_set_base_addr(fld_t *f, unsigned addr) {
     demand(mod_pow2(addr,20), addr is not aligned!);
 
     // make sure if you read it back, it's what you set it to.
-    todo("set <sec_base_addr>: look in <armv6-vm.h>");
+    f->sec_base_addr = (addr >> 20);
 
     // if the previous code worked, this should always succeed.
     assert((f->sec_base_addr << 20) == addr);
@@ -187,7 +197,15 @@ fld_t * mmu_map_section(fld_t *pt, uint32_t va, uint32_t pa, uint32_t dom) {
     //   4. domain to <dom>
     //   5. TEX strongly ordered (B4-12)
     //   6. executable.
-    fld_t *pte = staff_mmu_map_section(pt, va, pa, dom);
+    fld_t *pte = pt +  (va >> 20);
+    fld_set_base_addr(pte, pa);
+    pte->nG = 0;
+    pte->AP = 0b11;
+    pte->APX = 0;
+    pte->domain = dom;
+    pte->TEX = 0b000;
+    pte->XN = 0;
+    pte->tag = 0b10;
 
     fld_print(pte);
     printk("my.pte@ 0x%x = %b\n", pt, *(unsigned*)pte);
@@ -197,12 +215,12 @@ fld_t * mmu_map_section(fld_t *pt, uint32_t va, uint32_t pa, uint32_t dom) {
 
 // read and return the domain access control register
 uint32_t domain_access_ctrl_get(void) {
-    return staff_domain_access_ctrl_get();
+    return cp15_domain_ctrl_rd();
 }
 
 // b4-42
 // set domain access control register to <r>
 void domain_access_ctrl_set(uint32_t r) {
-    staff_domain_access_ctrl_set(r);
+    staff_cp15_domain_ctrl_wr(r);
     assert(domain_access_ctrl_get() == r);
 }
