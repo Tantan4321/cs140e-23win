@@ -37,6 +37,7 @@ MK_FN(get_cache_type)
 
 MK_FN(mmu_sync_pte_mods)
     mov r0, #0
+    CLEAN_INV_DCACHE(r0)  @ arm1176 6.4.2 says that data cache must be disabled before
     DSB(r0)  @ typical code for writing PTE B2-23
     INV_TLB(r0) @ invalidate both DTLB and ITLB here
     FLUSH_BTB(r0) @ B2-23, need to do this after modifying PTE
@@ -111,13 +112,13 @@ MK_FN(mmu_disable_set_asm)
     @ flush, but instructions could get fetched before we could disable,
     @ defeating the purpose.
     mov r1, #0
-    CLEAN_INV_DCACHE(r1)  @ arm1176 6.4.2 says that datacache must be disabled before
+    CLEAN_INV_DCACHE(r1)  @ arm1176 6.4.2 says that data cache must be disabled before
     DSB(r1)
     CONTROL_REG1_WR(r0)  @ arm1176 6.4.2 to disable MMU
     PREFETCH_FLUSH(r1) @ need to prefetch flush after cp15 modification B2.7.6, do not need DSB
 
     INV_ICACHE(r1)  @ clear out icache on mmu disable, put into known state for next run (readme)
-    @ FLUSH_BTB(r1)  @ 2.7.5: need this b/c the code changed and so the branch predictor contents could be stale
+    FLUSH_BTB(r1)  @ 2.7.5: need this b/c the icache changed and so the branch predictor contents could be stale
     DSB(r1)
     PREFETCH_FLUSH(r1)
 
@@ -134,21 +135,19 @@ MK_FN(mmu_disable_set_asm)
 @
 MK_FN(mmu_enable_set_asm)
     mov r1, #0
-    CLEAN_INV_DCACHE(r1)  @ arm1176 6.4.2 says that datacache must be disabled before
-    DSB(r1)
+    CONTROL_REG1_RD(r2) @ disable the icache
+    BIC r2, r2, #0x1000
+    CONTROL_REG1_WR(r2)
     PREFETCH_FLUSH(r1) @ need to prefetch flush after cp15 modification B2.7.6
-    INV_ICACHE(r1)  @ clear out icache on mmu disable, put into known state for next run (readme)
-    @ FLUSH_BTB(r1)  @ 2.7.5: need this b/c the code changed and so the branch predictor contents could be stale
-    DSB(r1)
-    PREFETCH_FLUSH(r1)
 
-    INV_TLB(r1) @ readme states that we must invalidate TLBs aswell
-    FLUSH_BTB(r1)  @ Since we are disabling the MMU here, we must invalidate BTB and PF
+    INV_ICACHE(r1)  @ clear out icache before mmu enable, readme
     DSB(r1)
-    PREFETCH_FLUSH(r1)
 
     CONTROL_REG1_WR(r0)  @ arm1176 6.4.1 to enable MMU after all the config steps
     PREFETCH_FLUSH(r1) @ need to prefetch flush after cp15 modification B2.7.6, do not
+    FLUSH_BTB(r1)  @ Since we are modifying the MMU state, we must invalidate BTB and PF
+    DSB(r1)
+    PREFETCH_FLUSH(r1)
 
     bx lr
 
@@ -162,6 +161,7 @@ MK_FN(mmu_enable_set_asm)
 MK_FN(cp15_set_procid_ttbr0)
     mov r2, #0
     @ B2-25:
+    DSB(r2)
     ASID_SET(r2) @ Change ASID to 0
     DSB(r2)
     PREFETCH_FLUSH(r2) @ B4-41
@@ -175,11 +175,12 @@ MK_FN(cp15_set_procid_ttbr0)
     TTBR1_SET(r2) @ set TTBR1 to 0, reference Readme and B4-41
     TTBR_BASE_CTRL_WR(r2) @ Set ttbrd to 0, see readme
 
+    FLUSH_BTB(r2) @ need to invalidate BTB after changing TTB regs section 2.7.5
     DSB(r2)
     PREFETCH_FLUSH(r2) @ B4-41
     ASID_SET(r0) @ Change ASID to new value
     DSB(r2) @ Atomicity, BTB flush must come after ASID
-    FLUSH_BTB(r2) @ need to invalidate BTB after changing TTB regs section 2.7.5
+    FLUSH_BTB(r2) @ need to invalidate BTB after changing ASID
     DSB(r2)
     PREFETCH_FLUSH(r2)
     bx lr
@@ -208,13 +209,7 @@ MK_FN(cp15_ctrl_reg1_rd)
 @ mmu_enable_set_asm().
 @
 @ also could just call the above from C code! :)
+
+@@@@@@@@@@@@@@@ IMPLEMENTED IN PINNED-VM.C @@@@@@@@@@@@@@@@@@@@@@@@@@
 @MK_FN(mmu_on_first_time)
-@    push {r0, r1, lr}
-@    bl mmu_init
-@    pop {r0, r1, lr}
-@    bl cp15_set_procid_ttbr0
-@    mov r1, #0
-@    CONTROL_REG1_RD(r0)  @ need to read control reg1
-@    PREFETCH_FLUSH(r1)  @ according to section B2.7.6: any change to cp15 needs prefectchflush, no DSB needed
-@    bl mmu_enable_set_asm
-@    bx lr
+@   bx lr
