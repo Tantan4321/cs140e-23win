@@ -4,10 +4,13 @@ BOOTLOADER = my-install
 #PROGS := 0-test-structs.c
 
 #PROGS := 1-test-setup.c
-PROGS := $(wildcard ./[0-2]-test*.c)
-#PROGS := 2-stack-write.c
+#PROGS := $(wildcard ./[0-2]-test*.c)
 
-# just some helpers: you should look through, has printing etc 
+#PROGS := $(wildcard ./[0-2]-*.c)
+#PROGS := 2-stack-write.c
+PROGS := 2-double-write.c
+
+# just some helpers: you should look through, has printing etc
 # routines.
 COMMON_SRC = mmu-helpers.c 
 
