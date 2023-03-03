@@ -86,6 +86,47 @@ Cheat code:
      It should be the case that if you change default values that both
      still agree!
 
+
+Key things:
+  1. You need to setup GPIO and SPI first or nothing will work (see the
+     code above).
+  2. You must put the chip in "power down" mode before you change
+     the configure.
+  3. If in not-ack mode,  just enable pipe 1.
+  4. If in ack mode,  you have to enable both pipe 0 and pipe 1.
+     Pipe 0 is needed to receive acks.  
+
+  5. You should flush the RX (`nrf_rx_flush()`) and TX fifos
+     (`nrf_tx_flush()`).  For today they should also be empty.
+     After:
+
+            assert(!nrf_tx_fifo_full(n));
+            assert(nrf_tx_fifo_empty(n));
+            assert(!nrf_rx_fifo_full(n));
+            assert(nrf_rx_fifo_empty(n));
+        
+            assert(!nrf_has_rx_intr(n));
+            assert(!nrf_has_tx_intr(n));
+            assert(pipeid_empty(nrf_rx_get_pipeid(n)));
+            assert(!nrf_rx_has_packet(n));
+
+  6.  We don't use dynamic payload or feature stuff today:
+
+        // reg=0x1c dynamic payload (next register --- don't set the others!)
+        assert(nrf_get8(n, NRF_DYNPD) == 0);
+
+        // reg 0x1d: feature register.  we don't use it yet.
+        nrf_put8_chk(n, NRF_FEATURE, 0);
+
+  7. You should power up and also (as is common) wait "long enough"
+     for the device to set itself up.  In this case, delay 2 milliseconds.
+
+  8. Finally: put the device in RX mode and return.  The enum `rx_config`
+     has the bits set the way we need them.
+
+  9. In general add tons of asserts to verify that things are in the
+     state you expect.
+
 When you swap in your `nrf_init`, all the tests should still pass.
 
 --------------------------------------------------------------------------------
@@ -100,8 +141,8 @@ You'll implement sending without acknowledgements.
    6. Clear the TX interrupt.
    7. When you are done, don't forget to set the device back in RX mode.
 
-When you change `nrf_send_noack` to call your `nrf_tx_send_noack` the first test
-should still work.
+When you get rid of the call to our `staff_nrf_tx_send_noack` the
+tests should work.
 
 --------------------------------------------------------------------------------
 #### Part 3: Implement `nrf-driver.c:nrf_get_pkts`.
@@ -114,8 +155,8 @@ each packet you get, the code will push it onto the pipe's circular queue
 (just as we did in previous labs).  You should clear the RX interrupt.
 When the RX fifo is empty, return the byte count.
 
-When you swap in `nrf_get_pkts` in `nrf-public/nrf_pipe_nbytes` both of
-the tests should still work.
+When you remove the call to our `staff_nrf_get_pkts` the 
+tests should still work.
 
 --------------------------------------------------------------------------------
 #### Part 4: Implement `nrf-driver.c:nrf_tx_send_ack`.
@@ -127,12 +168,26 @@ the no-ack version, except:
    3. You need to check for failure using the max retransmission interrupt (and clear it).
    4. When you are done, don't forget to set the device back in RX mode.
 
-The second test should still work when you swap in.
+When you get rid of the call to our `staff_nrf_tx_send_ack` the
+tests should work.
 
 Congratulations!  You now have a very useful networking system.
 
 --------------------------------------------------------------------------------
+#### Part 5: write a test to send to your partner.
+
+This should be a single change where you modify a one-way send.
+
+--------------------------------------------------------------------------------
 #### Extensions
+
+Mainline extensions:
+  1. Speed!  The code is slow.  You should be able to tune it.
+  2. Make a reliable FIFO.
+  3. Do a network bootloader.
+  4. Do exponential backoff to handle the case where two nodes blast
+     each other .
+  5. Do a tiny little distributed system!
 
 ##### Use interrupts
 
