@@ -8,12 +8,14 @@ PROGS := $(wildcard tests/0-*.c)
 # all the tests
 PROGS := $(wildcard tests/[0123]-*.c)
 
+#PROGS := tests/4-partner-ping-pong-ack-4bytes.c
+
 LIBS += ./libgcc.a
 
 COMMON_SRC := nrf-hw-support.c nrf-public.c nrf-driver.c
 
 STAFF_OBJS := $(CS140E_2023_PATH)/libpi/staff-objs/new-spi.o
-STAFF_OBJS += staff-nrf-driver.o
+#STAFF_OBJS += staff-nrf-driver.o
 
 
 # uncomment if you want it to automatically run.

@@ -8,7 +8,7 @@ enum { ntrial = 1000, timeout_usec = 1000, nbytes = 4 };
 static int net_get32(nrf_t *nic, uint32_t *out) {
     int ret = nrf_read_exact_timeout(nic, out, 4, timeout_usec);
     if(ret != 4) {
-        debug("receive failed: ret=%d\n", ret);
+//        debug("receive failed: ret=%d\n", ret);
         return 0;
     }
     return 1;
@@ -33,26 +33,25 @@ ping_pong_ack(nrf_t *s, nrf_t *c, int verbose_p) {
     uint32_t exp = 0, got = 0;
 
     for(unsigned i = 0; i < ntrial; i++) {
-        if(verbose_p && i  && i % 100 == 0)
-            trace("sent %d ack'd packets [timeouts=%d]\n", 
-                    npackets, ntimeout);
 
-        net_put32(s, client_addr, ++exp);
-        if(!net_get32(c, &got))
-            ntimeout++;
-        // could be a duplicate
-        else if(got != exp)
-            nrf_output("client: received %d (expected=%d)\n", got,exp);
-        else
-            npackets++;
+        // SEND PACKET TO PARTNER !!
+        trace("sending ack'd packet #%d [timeouts=%d]\n", npackets, ntimeout);
+        net_put32(s, client_addr, ++npackets);
 
-        net_put32(c, server_addr, ++exp);
-        if(!net_get32(s, &got))
-            ntimeout++;
-        else if(got != exp)
-            nrf_output("server: received %d (expected=%d)\n", got,exp);
-        else
-            npackets++;
+        ntimeout = 0;
+        // RECEIVE A PACKET FROM PARTNER!!!
+        while(got == 0) {
+            if(!net_get32(s, &got)) {
+                ntimeout++;
+            } else {
+                trace("client: received packet #%d \n", got);
+            }
+            if(ntimeout > 5000) {
+                trace("client: Failed to received packet #%d \n", got);
+                break;
+            }
+        }
+        got = 0;
     }
     trace("trial: total successfully sent %d ack'd packets lost [%d]\n",
         npackets, ntimeout);
