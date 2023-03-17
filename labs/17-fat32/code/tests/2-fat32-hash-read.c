@@ -64,14 +64,14 @@ void notmain() {
 
     // this could possibly fail if you have a different gcc
     // version --- change the cksum if so.
-    read_and_hash(&fs, &root, "HELLO-F.BIN", 0x383a4198);
+    read_and_hash(&fs, &root, "HELLO-F.BIN", 0x93d720c7);
 
     // fill in the cksum values for these.
-    printk("fill in the checksum for these three files\n");
-    read_and_hash(&fs, &root, "BOOTLO~1.BIN", 0);
-    read_and_hash(&fs, &root, "CONFIG.TXT", 0);
-    read_and_hash(&fs, &root, "KERNEL.IMG", 0);
-    panic("fill in the values for the previous three files\n");
+//    printk("fill in the checksum for these three files\n");
+    read_and_hash(&fs, &root, "BOOTLO~1.BIN", 0xed7e8fc7);
+    read_and_hash(&fs, &root, "CONFIG.TXT", 0xfd52a31c);
+    read_and_hash(&fs, &root, "KERNEL.IMG", 0xaac82302);
+//    panic("fill in the values for the previous three files\n");
 
     printk("PASS: %s\n", __FILE__);
     clean_reboot();

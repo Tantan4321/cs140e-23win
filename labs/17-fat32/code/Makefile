@@ -1,15 +1,19 @@
 # uncomment COMMON_SRC and comment out STAFF_OBJS
-# COMMON_SRC += mbr.c
-STAFF_OBJS +=  staff-mbr.o
+COMMON_SRC += mbr.c
+#STAFF_OBJS +=  staff-mbr.o
 
 # uncomment COMMON_SRC and comment out STAFF_OBJS
-# COMMON_SRC += fat32.c
-STAFF_OBJS +=  staff-fat32.o
+ COMMON_SRC += fat32.c
+#STAFF_OBJS +=  staff-fat32.o
 
 # the tests in decreasing order of difficulty.
 PROGS := $(wildcard ./tests/[2]-*.c)
-PROGS := $(wildcard ./tests/[1]-*.c)
-PROGS := $(wildcard ./tests/[0]-*.c)
+#PROGS := $(wildcard ./tests/[1]-*.c)
+#PROGS := $(wildcard ./tests/[0]-*.c)
+#PROGS := ./tests/2-fat32-read.c
+
+LIBS += ./libgcc.a
+
 
 CFLAGS_EXTRA  = -Iexternal-code
 
